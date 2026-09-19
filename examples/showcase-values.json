@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "values": {
+    "fullscreen": true,
+    "theme": "dark",
+    "accent": "#e8a54780",
+    "name": "Showcase profile"
+  }
+}

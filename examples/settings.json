@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "children": [
+    {
+      "type": "group",
+      "id": "display",
+      "label": "Display & appearance",
+      "description": "Configure how your application looks.",
+      "children": [
+        {
+          "type": "checkbox",
+          "id": "fullscreen",
+          "label": "Fullscreen",
+          "description": "Use the entire display for the application window.",
+          "default": false
+        },
+        {
+          "type": "combo",
+          "id": "theme",
+          "label": "Theme",
+          "description": "Choose the application's preferred appearance.",
+          "default": "system",
+          "options": [
+            {
+              "label": "Follow system",
+              "value": "system"
+            },
+            {
+              "label": "Dark",
+              "value": "dark"
+            },
+            {
+              "label": "Light",
+              "value": "light"
+            }
+          ]
+        },
+        {
+          "type": "number",
+          "id": "scale",
+          "label": "Content scale",
+          "description": "Scale the application's content. Valid range: 0.5 to 3.0.",
+          "default": 1,
+          "min": 0.5,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "type": "number",
+          "id": "large_range",
+          "label": "Large-range number",
+          "description": "Hold the up/down rocker to accelerate through 0 to 1,000,000. The base step is 1; held steps double every half-second after the initial delay. Release and click again for precise adjustments.",
+          "default": 0,
+          "min": 0,
+          "max": 1000000,
+          "step": 1
+        },
+        {
+          "type": "group",
+          "id": "advanced",
+          "label": "Advanced display",
+          "description": "Additional rendering preferences.",
+          "children": [
+            {
+              "type": "integer",
+              "id": "refresh",
+              "label": "Refresh rate",
+              "description": "Maximum update frequency, in frames per second.",
+              "default": 60,
+              "min": 1,
+              "max": 240,
+              "step": 5
+            },
+            {
+              "type": "radio",
+              "id": "quality",
+              "label": "Rendering quality",
+              "description": "Balance visual quality against rendering cost.",
+              "default": "balanced",
+              "options": [
+                {
+                  "label": "Fast",
+                  "value": "fast"
+                },
+                {
+                  "label": "Balanced",
+                  "value": "balanced"
+                },
+                {
+                  "label": "High quality",
+                  "value": "high"
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "id": "assets",
+              "label": "Assets & colors",
+              "description": "Third-level scope: color and file controls. Groups can be nested up to 64 levels.",
+              "children": [
+                {
+                  "type": "color",
+                  "id": "accent",
+                  "label": "Accent color",
+                  "description": "Choose an RGBA color. RGB and HSL sliders stay synchronized; alpha controls transparency independently.",
+                  "default": "#66b7ffff"
+                },
+                {
+                  "type": "file",
+                  "id": "background",
+                  "label": "Background image",
+                  "description": "Choose an image using the native file picker, or enter its path.",
+                  "default": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "id": "general",
+      "label": "General",
+      "description": "Names, locations, and application preferences.",
+      "children": [
+        {
+          "type": "text",
+          "id": "name",
+          "label": "Profile name",
+          "description": "A descriptive name for this profile. Unicode text is supported.",
+          "default": "Default profile"
+        },
+        {
+          "type": "text",
+          "id": "greeting",
+          "label": "Greeting",
+          "description": "Unicode example: café · שלום · 日本語",
+          "default": "Hello, world!"
+        }
+      ]
+    }
+  ]
+}

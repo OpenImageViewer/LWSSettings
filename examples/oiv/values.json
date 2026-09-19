@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "values": {
+    "system/allowdynamicsettings": true,
+    "filesystem/deletedfileremovalmode": "externally",
+    "filesystem/modifiedfilereloadmode": "confirmation",
+    "viewsettings/maxzoom": 100.0,
+    "viewsettings/minimagesize": 150.0,
+    "viewsettings/slideshowinterval": 2000,
+    "viewsettings/quickbrowsedelay": 100,
+    "viewsettings/imagemargins/x": 0.25,
+    "viewsettings/imagemargins/y": 0.25,
+    "autoscroll/deadzoneradius": 10,
+    "autoscroll/speedfactorin": 0.4,
+    "autoscroll/speedfactorout": 1.4,
+    "autoscroll/speedfactorrange": 30,
+    "autoscroll/maxspeed": 8000
+  }
+}

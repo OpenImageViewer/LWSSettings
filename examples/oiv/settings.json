@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "children": [
+    {
+      "type": "group",
+      "id": "system",
+      "label": "System",
+      "children": [
+        {
+          "type": "checkbox",
+          "id": "system/allowdynamicsettings",
+          "label": "Allow dynamic settings",
+          "description": "Allows reloading of this file at runtime",
+          "default": false
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "id": "filesystem",
+      "label": "File system",
+      "children": [
+        {
+          "type": "combo",
+          "id": "filesystem/deletedfileremovalmode",
+          "label": "Deleted file removal mode",
+          "description": "Defines when to remove an opened file if deleted. none - never remove the file. internally - remove the file only if deleted internally. externally - remove the file only if deleted externally. always - always remove the file if deleted",
+          "default": "internally",
+          "options": [
+            {
+              "label": "Always",
+              "value": "always"
+            },
+            {
+              "label": "Externally",
+              "value": "externally"
+            },
+            {
+              "label": "Internally",
+              "value": "internally"
+            },
+            {
+              "label": "None",
+              "value": "none"
+            }
+          ]
+        },
+        {
+          "type": "combo",
+          "id": "filesystem/modifiedfilereloadmode",
+          "label": "Modified file reload mode",
+          "description": "Defines when to reload a modified file if changed outside of the program. none - never reload. confirmation - reload file only after the user confirmed via a message box when the application is active. autoforeground - reload file as soon as the application becomes active. autobackground - reload file immediately when changed",
+          "default": "confirmation",
+          "options": [
+            {
+              "label": "None",
+              "value": "none"
+            },
+            {
+              "label": "Confirmation",
+              "value": "confirmation"
+            },
+            {
+              "label": "Auto foreground",
+              "value": "autoforeground"
+            },
+            {
+              "label": "Auto background",
+              "value": "autobackground"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "id": "viewsettings",
+      "label": "View settings",
+      "children": [
+        {
+          "type": "number",
+          "id": "viewsettings/maxzoom",
+          "label": "Max Zoom",
+          "description": "The maximum allowed zoom.",
+          "default": 100.0,
+          "step": 1
+        },
+        {
+          "type": "number",
+          "id": "viewsettings/minimagesize",
+          "label": "Min image size in pixels",
+          "description": "The minimum allowed zoom, represented by the minimum size in pixels of the smallest axis of the image",
+          "default": 150.0,
+          "step": 1
+        },
+        {
+          "type": "integer",
+          "id": "viewsettings/slideshowinterval",
+          "label": "Slideshow interval in ms",
+          "description": "",
+          "default": 2000,
+          "step": 1
+        },
+        {
+          "type": "integer",
+          "id": "viewsettings/quickbrowsedelay",
+          "label": "Quick browse delay in ms",
+          "description": "",
+          "default": 100,
+          "step": 1
+        },
+        {
+          "type": "group",
+          "id": "viewsettings/imagemargins",
+          "label": "Image margins",
+          "children": [
+            {
+              "type": "number",
+              "id": "viewsettings/imagemargins/x",
+              "label": "X",
+              "description": "Image horizontal margins relative to the edge of the window. When the width of the image is smaller than the width of the window, the image is allowed to overflow X*100 percent in the horizontal axis. If the width of the image is larger than the width of the window then the image is allowed to overflow in the horizontal axis up to a point where X*100 percent of the window width is not occupied by the image.",
+              "default": 0.25,
+              "step": 0.01
+            },
+            {
+              "type": "number",
+              "id": "viewsettings/imagemargins/y",
+              "label": "Y",
+              "description": "Image vertical margins relative to the edge of the window. When the height of the image is smaller than the height of the window, the image is allowed to overflow Y*100 percent in the vertical axis. If the height of the image is larger than the height of the window then the image is allowed to overflow in the vertical axis up to a point where Y*100 percent of the window height is not occupied by the image.",
+              "default": 0.25,
+              "step": 0.01
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "id": "autoscroll",
+      "label": "Auto scroll",
+      "children": [
+        {
+          "type": "integer",
+          "id": "autoscroll/deadzoneradius",
+          "label": "Dead zone radius",
+          "description": "The distance from the autoscroll point where no scrolling takes effect",
+          "default": 10,
+          "step": 1
+        },
+        {
+          "type": "number",
+          "id": "autoscroll/speedfactorin",
+          "label": "Speed factor In",
+          "description": "Auto scroll acceleration at the nearest point of the scroll",
+          "default": 0.4,
+          "step": 0.1
+        },
+        {
+          "type": "number",
+          "id": "autoscroll/speedfactorout",
+          "label": "Speed factor out",
+          "description": "Auto scroll acceleration at the furthest point of the scroll",
+          "default": 1.4,
+          "step": 0.1
+        },
+        {
+          "type": "integer",
+          "id": "autoscroll/speedfactorrange",
+          "label": "Speed factor range",
+          "description": "The range of the autoscroll in pixels where acceleration changes",
+          "default": 30,
+          "step": 1
+        },
+        {
+          "type": "integer",
+          "id": "autoscroll/maxspeed",
+          "label": "Max speed",
+          "description": "Max speed of the autoscroll in pixels per second",
+          "default": 8000,
+          "step": 1
+        }
+      ]
+    }
+  ]
+}
