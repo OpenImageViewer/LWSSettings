@@ -1,5 +1,6 @@
 #pragma once
-#include <LWSSettings/SettingsPage.hpp>
+#include <LWSSettings/SettingsDocument.hpp>
+#include <nlohmann/json.hpp>
 #include <iomanip>
 #include <ostream>
 #include <sstream>
@@ -50,9 +51,11 @@ namespace LWSSettings::Example
                 {"oldValue", encode(event.oldValue)},
                 {"newValue", encode(event.newValue)},
                 {"valueType", types[event.newValue.index()]},
-                {"kind", event.kind == ChangeKind::Live ? "live" : "confirmed"},
+                {"phase", event.phase == EditPhase::Preview  ? "preview"
+                          : event.phase == EditPhase::Cancel ? "cancel"
+                                                             : "commit"},
                 {"origin", origin},
-                {"domain", event.domain == ValueDomain::Working ? "working" : "effective"}};
+                {"domain", event.domain == ValueDomain::Working ? "working" : "applied"}};
     }
     inline void PrintEvent(std::ostream& output, const Change& event)
     {

@@ -26,24 +26,39 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
         find_package(nlohmann_json 3.12 REQUIRED)
     endif()
 endif()
-add_library(LWSSettings STATIC src/SettingsPage.cpp src/Viewer.cpp src/Canvas.cpp src/Controls.cpp)
+# Keep one consumable settings target until a headless consumer needs a core target.
+# Splitting document/storage from UI would otherwise add packaging/dependency policy
+# without a current consumer benefit; the source boundaries already permit that split.
+add_library(LWSSettings STATIC src/SettingsDocument.cpp src/SettingsStorage.cpp src/SettingsView.cpp src/SettingsEditor.cpp src/ThemeStorage.cpp src/ThemeFields.cpp src/ThemeEditor.cpp src/ThemeSession.cpp src/ThemeSelector.cpp src/SettingsIcon.cpp)
 add_library(LWSSettings::LWSSettings ALIAS LWSSettings)
 target_compile_features(LWSSettings PUBLIC cxx_std_26)
 target_include_directories(LWSSettings PUBLIC include PRIVATE src)
-target_link_libraries(LWSSettings PUBLIC LWSLib nlohmann_json::nlohmann_json LLUtils::LLUtils)
-if(WIN32)
-    target_compile_definitions(LWSSettings PUBLIC NOMINMAX UNICODE _UNICODE)
-    target_link_libraries(LWSSettings PRIVATE d2d1 dwrite windowscodecs)
-else()
+target_link_libraries(LWSSettings PUBLIC LWSUI::LWSUI nlohmann_json::nlohmann_json)
+if(NOT WIN32)
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SettingsText REQUIRED IMPORTED_TARGET pangocairo fontconfig)
-    target_link_libraries(LWSSettings PRIVATE PkgConfig::SettingsText)
+    pkg_check_modules(SettingsPng REQUIRED IMPORTED_TARGET cairo)
+    target_link_libraries(LWSSettings PRIVATE PkgConfig::SettingsPng)
 endif()
 if(LWSSETTINGS_BUILD_DEMO)
     add_executable(LWSSettingsDemo examples/main.cpp)
     target_link_libraries(LWSSettingsDemo PRIVATE LWSSettings)
-    configure_file(examples/settings.json settings.json COPYONLY)
-    configure_file(examples/showcase-values.json showcase-values.json COPYONLY)
+    # Launching from the executable directory must work with custom runtime output
+    # paths and multi-config generators, not just from the top-level build folder.
+    foreach(asset settings.json showcase-values.json theme-settings.json)
+        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/${asset}"
+            INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/${asset}"
+            TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
+    endforeach()
+    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/oiv/theme-settings.json"
+        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/theme-settings.json"
+        TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
+    # Never generate writable theme.json; preserve saved customization on regeneration.
+    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/theme-default.json"
+        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/theme.json"
+        TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
+    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/oiv/theme-default.json"
+        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/theme.json"
+        TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
     file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/oiv/settings.json"
         INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/oiv/settings.json"
         TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)

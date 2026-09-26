@@ -26,18 +26,20 @@ CMake places the profile in an `oiv` directory beside the demo executable, namin
 For the current Windows build:
 
 ```powershell
-cd D:\dev\LWSSettings\build-win\updated\oiv
+cd D:\dev\LWSSettings\build-release\oiv
 ..\LWSSettingsDemo.exe
 ```
 
-Add `--staged` or `--autosave` to select another workflow. Saved edits go to `user-settings.json` in the
+Add `--staged` for OnApply and `--autosave` for OnCommit; combine them to save after Apply. Saved edits go to `user-settings.json` in the
 profile directory. Existing saved edits take precedence over the supplied snapshot.
 
 ## Application integration
 
 ```cpp
-auto schema = settings.LoadTemplateFile("examples/oiv/settings.json");
-auto values = settings.LoadValuesFile("examples/oiv/values.json");
+LWSSettings::SettingsEditor editor(platform); // Borrow the application PlatformContext.
+auto& document = editor.Document();
+auto schema = LWSSettings::SettingsStorage::LoadTemplateFile(document, "examples/oiv/settings.json");
+auto values = LWSSettings::SettingsStorage::LoadValuesFile(document, "examples/oiv/values.json");
 ```
 
 Check both returned statuses. To write back to OIViewer, map the slash-separated IDs into its nested JSON
