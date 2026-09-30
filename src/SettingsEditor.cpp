@@ -8,6 +8,12 @@ namespace LWSSettings
     SettingsEditor::SettingsEditor(LWS::PlatformContext& platform, EditorConfig config)
         : platform_(platform), config_(std::move(config)), document_(config_.document) {}
     SettingsEditor::~SettingsEditor() = default;
+    void SettingsEditor::SetRedrawOnResize(bool enabled)
+    {
+        config_.redrawOnResize = enabled;
+        if (host_)
+            host_->SetRedrawOnResize(enabled);
+    }
     Status SettingsEditor::Show()
     {
         if (!platform_.IsUsable())
@@ -61,6 +67,7 @@ namespace LWSSettings
                 if (!listener) throw std::runtime_error("Cannot register editor listener");
                 listener_ = std::move(*listener);
                 host_ = std::make_unique<LWSUI::UIHost>(*window_, config_.theme.base);
+                host_->SetRedrawOnResize(config_.redrawOnResize);
                 host_->SetPopupStyle(config_.theme.popups);
                 auto bar = std::make_unique<LWSUI::MenuBar>();
                 bar->SetWindowControls({.minimize = true, .draggable = true, .requestClose = [this] { Hide(); }});

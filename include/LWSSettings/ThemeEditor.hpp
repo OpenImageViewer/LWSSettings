@@ -15,6 +15,8 @@ namespace LWSSettings
         ThemeEditor(LWS::PlatformContext& platform, ThemeSession& session, const std::filesystem::path& iconPath = {});
         Status Load(const std::filesystem::path& templateFile = {});
         Status Show();
+        void SetRedrawOnResize(bool enabled) { editor_.SetRedrawOnResize(enabled); }
+        bool RedrawOnResize() const { return editor_.RedrawOnResize(); }
         void Hide() { if (editor_.IsVisible()) editor_.Hide(); }
         void Revert();
         Status Save();

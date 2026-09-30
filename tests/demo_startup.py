@@ -41,6 +41,7 @@ with tempfile.TemporaryDirectory(prefix="run-", dir=scratch) as temporary:
     run(clean, "--smoke")
     assert not (clean / "user-settings.json").exists()
     assert not (clean / "theme.json").exists()
+    run(case("deferred-resize"), "--no-live-resize", "--edit-theme", "--snapshot")
     run(clean, "--edit-theme", "--snapshot")
     assert (clean / "theme-editor.ppm").exists()
     assert not (clean / "theme.json").exists()

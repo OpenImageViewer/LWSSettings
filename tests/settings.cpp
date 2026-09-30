@@ -3630,3 +3630,39 @@ TEST_CASE("Settings headers move into the bar without dangling controls", "[view
     REQUIRE(editor.View()->Host()->MainMenu()->Content() != nullptr);
     REQUIRE(editor.View()->HeaderActions().Parent() == editor.View()->Host()->MainMenu()->Content());
 }
+
+TEST_CASE("Settings live resize policy survives window recreation", "[viewer][resize]")
+{
+    TestPlatform platform;
+    EditorConfig config;
+    REQUIRE(config.redrawOnResize);
+    SECTION("enabled default") {}
+    SECTION("configuration opt-out")
+    {
+        config.redrawOnResize = false;
+    }
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    WaitForConfiguration(editor.View()->Host()->Window());
+    REQUIRE(editor.RedrawOnResize() == config.redrawOnResize);
+    REQUIRE(editor.View()->Host()->RedrawOnResize() == config.redrawOnResize);
+    editor.SetRedrawOnResize(!config.redrawOnResize);
+    REQUIRE(editor.Hide());
+    REQUIRE(editor.Show());
+    REQUIRE(editor.View()->Host()->RedrawOnResize() == !config.redrawOnResize);
+    REQUIRE(editor.Hide());
+    REQUIRE(editor.View()->Host()->Window().Destroy() == LWS::Result::Success);
+    REQUIRE(editor.Show());
+    WaitForConfiguration(editor.View()->Host()->Window());
+    REQUIRE(editor.View()->Host()->RedrawOnResize() == !config.redrawOnResize);
+    TempFile themeFile;
+    ThemeEditor theme(platform, themeFile.path);
+    REQUIRE(theme.RedrawOnResize());
+    theme.SetRedrawOnResize(false);
+    REQUIRE(theme.Load());
+    REQUIRE(theme.Show());
+    REQUIRE_FALSE(theme.Editor().View()->Host()->RedrawOnResize());
+    theme.SetRedrawOnResize(true);
+    REQUIRE(theme.Editor().View()->Host()->RedrawOnResize());
+}

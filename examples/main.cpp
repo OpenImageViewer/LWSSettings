@@ -72,6 +72,8 @@ int main(int argc, char** argv)
             else
                 exportTheme = argv[++i];
         }
+        else if (arg == "--no-live-resize")
+            config.redrawOnResize = false;
         else if (arg == "--edit-theme")
             editTheme = true;
         else if (arg == "--staged")
@@ -184,6 +186,7 @@ int main(int argc, char** argv)
             if (!themeEditor)
             {
                 auto candidate = std::make_unique<LWSSettings::ThemeEditor>(platform, themeSession, config.iconPath);
+                candidate->SetRedrawOnResize(config.redrawOnResize);
                 auto loaded = candidate->Load();
                 if (report(loaded))
                 {

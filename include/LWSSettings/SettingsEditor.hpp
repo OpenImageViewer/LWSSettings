@@ -11,6 +11,7 @@ namespace LWSSettings
         SettingsTheme theme;
         bool showRevert = false, revertOnClose = false, collapseGroups = false;
         std::filesystem::path iconPath; // PNG; empty selects the embedded cog wheels.
+        bool redrawOnResize = true;     // Callers can opt out on expensive views or slower machines.
     };
     // Owns one document, window and view; the caller context must outlive the editor.
     // Data operations are available before Show. Reopening after native destruction
@@ -26,6 +27,8 @@ namespace LWSSettings
         Status Show();
         bool Hide();
         bool IsVisible() const;
+        void SetRedrawOnResize(bool enabled);
+        bool RedrawOnResize() const { return config_.redrawOnResize; }
         SettingsView* View() const { return view_; }
         void SetFilter(std::string text);
         void SetValueFilter(SettingValueFilter filter);

@@ -412,3 +412,16 @@ an externally supplied ThemeSession for validated profile changes, and subscribe
 ThemeEditor::OnError for errors. The editor's hidden metadata cannot be replaced through
 the public document API. Clean session pulls perform no synthetic field commits; dirty
 pulls apply only differences after establishing the saved baseline.
+
+## Live resize redraw
+
+SettingsEditor redraws during resizing by default. Set `EditorConfig::redrawOnResize`
+to false when constructing an expensive view or targeting a slower machine. The
+runtime `SettingsEditor::SetRedrawOnResize(bool)` setter preserves the choice across
+hide/show and native-window recreation; `RedrawOnResize()` reports it. ThemeEditor
+has the same setter/getter and enabled default. This is an application policy,
+not a JSON theme or settings property.
+
+The demo accepts `--no-live-resize` to use deferred redraw for both the settings
+window and its live theme editor. Menu-bar double-click behavior is a separate
+LWSUI opt-in and is not enabled automatically by this resize policy.
