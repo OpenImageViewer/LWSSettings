@@ -503,6 +503,36 @@
               "type": "number"
             },
             {
+              "default": 45.71428680419922,
+              "description": "Theme property: base/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+              "id": "base/metrics/menuBarHeight",
+              "label": "Menu Bar Height",
+              "max": 10000.0,
+              "min": 1.401298464324817e-45,
+              "step": 1.0,
+              "type": "number"
+            },
+            {
+              "default": 13.714285850524902,
+              "description": "Theme property: base/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+              "id": "base/metrics/menuBarPadding",
+              "label": "Menu Bar Padding",
+              "max": 10000.0,
+              "min": 0.0,
+              "step": 1.0,
+              "type": "number"
+            },
+            {
+              "default": 18.285715103149414,
+              "description": "Theme property: base/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+              "id": "base/metrics/menuArrowWidth",
+              "label": "Menu Arrow Width",
+              "max": 10000.0,
+              "min": 1.401298464324817e-45,
+              "step": 1.0,
+              "type": "number"
+            },
+            {
               "default": 720.0,
               "description": "Theme property: base/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/popupWidth",
@@ -825,6 +855,16 @@
               "label": "Acceleration Ms",
               "max": 60000,
               "min": 1,
+              "step": 1,
+              "type": "integer"
+            },
+            {
+              "default": 400,
+              "description": "Theme property: base/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+              "id": "base/interaction/menuHoverDelayMs",
+              "label": "Menu Hover Delay Ms",
+              "max": 60000,
+              "min": 0,
               "step": 1,
               "type": "integer"
             }
@@ -1345,6 +1385,36 @@
                   "type": "number"
                 },
                 {
+                  "default": 45.71428680419922,
+                  "description": "Theme property: sections/header/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/header/metrics/menuBarHeight",
+                  "label": "Menu Bar Height",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 13.714285850524902,
+                  "description": "Theme property: sections/header/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/header/metrics/menuBarPadding",
+                  "label": "Menu Bar Padding",
+                  "max": 10000.0,
+                  "min": 0.0,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 18.285715103149414,
+                  "description": "Theme property: sections/header/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/header/metrics/menuArrowWidth",
+                  "label": "Menu Arrow Width",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
                   "default": 720.0,
                   "description": "Theme property: sections/header/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/popupWidth",
@@ -1667,6 +1737,16 @@
                   "label": "Acceleration Ms",
                   "max": 60000,
                   "min": 1,
+                  "step": 1,
+                  "type": "integer"
+                },
+                {
+                  "default": 400,
+                  "description": "Theme property: sections/header/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/header/interaction/menuHoverDelayMs",
+                  "label": "Menu Hover Delay Ms",
+                  "max": 60000,
+                  "min": 0,
                   "step": 1,
                   "type": "integer"
                 }
@@ -2185,6 +2265,36 @@
                   "type": "number"
                 },
                 {
+                  "default": 45.71428680419922,
+                  "description": "Theme property: sections/search/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/search/metrics/menuBarHeight",
+                  "label": "Menu Bar Height",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 13.714285850524902,
+                  "description": "Theme property: sections/search/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/search/metrics/menuBarPadding",
+                  "label": "Menu Bar Padding",
+                  "max": 10000.0,
+                  "min": 0.0,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 18.285715103149414,
+                  "description": "Theme property: sections/search/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/search/metrics/menuArrowWidth",
+                  "label": "Menu Arrow Width",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
                   "default": 720.0,
                   "description": "Theme property: sections/search/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/popupWidth",
@@ -2507,6 +2617,16 @@
                   "label": "Acceleration Ms",
                   "max": 60000,
                   "min": 1,
+                  "step": 1,
+                  "type": "integer"
+                },
+                {
+                  "default": 400,
+                  "description": "Theme property: sections/search/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/search/interaction/menuHoverDelayMs",
+                  "label": "Menu Hover Delay Ms",
+                  "max": 60000,
+                  "min": 0,
                   "step": 1,
                   "type": "integer"
                 }
@@ -3025,6 +3145,36 @@
                   "type": "number"
                 },
                 {
+                  "default": 45.71428680419922,
+                  "description": "Theme property: sections/tree/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/tree/metrics/menuBarHeight",
+                  "label": "Menu Bar Height",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 13.714285850524902,
+                  "description": "Theme property: sections/tree/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/tree/metrics/menuBarPadding",
+                  "label": "Menu Bar Padding",
+                  "max": 10000.0,
+                  "min": 0.0,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 18.285715103149414,
+                  "description": "Theme property: sections/tree/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/tree/metrics/menuArrowWidth",
+                  "label": "Menu Arrow Width",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
                   "default": 720.0,
                   "description": "Theme property: sections/tree/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/popupWidth",
@@ -3347,6 +3497,16 @@
                   "label": "Acceleration Ms",
                   "max": 60000,
                   "min": 1,
+                  "step": 1,
+                  "type": "integer"
+                },
+                {
+                  "default": 400,
+                  "description": "Theme property: sections/tree/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/tree/interaction/menuHoverDelayMs",
+                  "label": "Menu Hover Delay Ms",
+                  "max": 60000,
+                  "min": 0,
                   "step": 1,
                   "type": "integer"
                 }
@@ -3865,6 +4025,36 @@
                   "type": "number"
                 },
                 {
+                  "default": 45.71428680419922,
+                  "description": "Theme property: sections/description/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/description/metrics/menuBarHeight",
+                  "label": "Menu Bar Height",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 13.714285850524902,
+                  "description": "Theme property: sections/description/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/description/metrics/menuBarPadding",
+                  "label": "Menu Bar Padding",
+                  "max": 10000.0,
+                  "min": 0.0,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 18.285715103149414,
+                  "description": "Theme property: sections/description/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/description/metrics/menuArrowWidth",
+                  "label": "Menu Arrow Width",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
                   "default": 720.0,
                   "description": "Theme property: sections/description/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/popupWidth",
@@ -4187,6 +4377,16 @@
                   "label": "Acceleration Ms",
                   "max": 60000,
                   "min": 1,
+                  "step": 1,
+                  "type": "integer"
+                },
+                {
+                  "default": 400,
+                  "description": "Theme property: sections/description/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/description/interaction/menuHoverDelayMs",
+                  "label": "Menu Hover Delay Ms",
+                  "max": 60000,
+                  "min": 0,
                   "step": 1,
                   "type": "integer"
                 }
@@ -4705,6 +4905,36 @@
                   "type": "number"
                 },
                 {
+                  "default": 45.71428680419922,
+                  "description": "Theme property: sections/footer/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/footer/metrics/menuBarHeight",
+                  "label": "Menu Bar Height",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 13.714285850524902,
+                  "description": "Theme property: sections/footer/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/footer/metrics/menuBarPadding",
+                  "label": "Menu Bar Padding",
+                  "max": 10000.0,
+                  "min": 0.0,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 18.285715103149414,
+                  "description": "Theme property: sections/footer/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/footer/metrics/menuArrowWidth",
+                  "label": "Menu Arrow Width",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
                   "default": 720.0,
                   "description": "Theme property: sections/footer/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/popupWidth",
@@ -5027,6 +5257,16 @@
                   "label": "Acceleration Ms",
                   "max": 60000,
                   "min": 1,
+                  "step": 1,
+                  "type": "integer"
+                },
+                {
+                  "default": 400,
+                  "description": "Theme property: sections/footer/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/footer/interaction/menuHoverDelayMs",
+                  "label": "Menu Hover Delay Ms",
+                  "max": 60000,
+                  "min": 0,
                   "step": 1,
                   "type": "integer"
                 }
@@ -5545,6 +5785,36 @@
                   "type": "number"
                 },
                 {
+                  "default": 45.71428680419922,
+                  "description": "Theme property: sections/controls/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/controls/metrics/menuBarHeight",
+                  "label": "Menu Bar Height",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 13.714285850524902,
+                  "description": "Theme property: sections/controls/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/controls/metrics/menuBarPadding",
+                  "label": "Menu Bar Padding",
+                  "max": 10000.0,
+                  "min": 0.0,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 18.285715103149414,
+                  "description": "Theme property: sections/controls/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/controls/metrics/menuArrowWidth",
+                  "label": "Menu Arrow Width",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
                   "default": 720.0,
                   "description": "Theme property: sections/controls/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/popupWidth",
@@ -5867,6 +6137,16 @@
                   "label": "Acceleration Ms",
                   "max": 60000,
                   "min": 1,
+                  "step": 1,
+                  "type": "integer"
+                },
+                {
+                  "default": 400,
+                  "description": "Theme property: sections/controls/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/controls/interaction/menuHoverDelayMs",
+                  "label": "Menu Hover Delay Ms",
+                  "max": 60000,
+                  "min": 0,
                   "step": 1,
                   "type": "integer"
                 }
@@ -6385,6 +6665,36 @@
                   "type": "number"
                 },
                 {
+                  "default": 45.71428680419922,
+                  "description": "Theme property: sections/popups/metrics/menuBarHeight. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/popups/metrics/menuBarHeight",
+                  "label": "Menu Bar Height",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 13.714285850524902,
+                  "description": "Theme property: sections/popups/metrics/menuBarPadding. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/popups/metrics/menuBarPadding",
+                  "label": "Menu Bar Padding",
+                  "max": 10000.0,
+                  "min": 0.0,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
+                  "default": 18.285715103149414,
+                  "description": "Theme property: sections/popups/metrics/menuArrowWidth. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/popups/metrics/menuArrowWidth",
+                  "label": "Menu Arrow Width",
+                  "max": 10000.0,
+                  "min": 1.401298464324817e-45,
+                  "step": 1.0,
+                  "type": "number"
+                },
+                {
                   "default": 720.0,
                   "description": "Theme property: sections/popups/metrics/popupWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/popupWidth",
@@ -6707,6 +7017,16 @@
                   "label": "Acceleration Ms",
                   "max": 60000,
                   "min": 1,
+                  "step": 1,
+                  "type": "integer"
+                },
+                {
+                  "default": 400,
+                  "description": "Theme property: sections/popups/interaction/menuHoverDelayMs. Editing creates an override; Use inherited restores the base or default value.",
+                  "id": "sections/popups/interaction/menuHoverDelayMs",
+                  "label": "Menu Hover Delay Ms",
+                  "max": 60000,
+                  "min": 0,
                   "step": 1,
                   "type": "integer"
                 }

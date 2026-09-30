@@ -3,7 +3,7 @@
 #include "SettingsIcon.hpp"
 #include "SettingsHeader.hpp"
 #include <stdexcept>
-#include "SliderValueEditor.hpp"
+
 namespace LWSSettings
 {
     static std::string Lower(std::string text)
@@ -16,89 +16,6 @@ namespace LWSSettings
                : phase == LWSUI::EditPhase::Cancel ? EditPhase::Cancel
                                                    : EditPhase::Commit;
     }
-    namespace
-    {
-        class GroupActionButton final : public LWSUI::Button
-        {
-          public:
-            explicit GroupActionButton(bool expand)
-                : Button(expand ? "Expand all" : "Collapse all"), expand_(expand) { flat = true; }
-            bool Focusable() const override { return false; }
-
-          protected:
-            bool OnInput(const LWSUI::Input& input) override
-            {
-                if (input.kind == LWSUI::InputKind::KeyDown || input.kind == LWSUI::InputKind::KeyUp) return false;
-                return Button::OnInput(input);
-            }
-            void OnRender(LWSUI::Canvas& canvas) override
-            {
-                const auto b = Bounds();
-                if (Enabled() && (pressed_ || Hovered()))
-                    canvas.Fill(b.x, b.y, b.width, b.height, pressed_ ? Style().selectedRow : Style().hoverSurface);
-                const auto color = Enabled() ? Foreground() : Style().muted;
-                const float side = std::min(b.width, b.height) * .45f;
-                const float left = b.x + (b.width - side) / 2;
-                const float direction = expand_ ? 1.f : -1.f;
-                const float stroke = std::max(1.f, Style().borderWidth);
-                for (float offset : {-.23f, .23f})
-                {
-                    const float y = b.y + b.height / 2 + offset * side;
-                    canvas.Line(left, y - direction * .18f * side,
-                                left + side / 2, y + direction * .18f * side, stroke, color);
-                    canvas.Line(left + side / 2, y + direction * .18f * side,
-                                left + side, y - direction * .18f * side, stroke, color);
-                }
-            }
-
-          private:
-            bool expand_;
-        };
-        class ActionsBar : public LWSUI::Container
-        {
-          public:
-
-            explicit ActionsBar(SettingsLayout layout) : layout_(layout) {}
-            void SetLayout(SettingsLayout layout)
-            {
-                layout_ = layout;
-                Invalidate(true);
-            }
-
-          protected:
-
-            LWSUI::Size OnMeasure(LWSUI::Size available) override
-            {
-                float h = 0;
-                for (auto& child : Children())
-                    h = std::max(h, child->Measure(available).height);
-                return {available.width, std::max(layout_.footerHeight, h + 2 * Style().padding)};
-            }
-            void OnArrange() override
-            {
-                auto b = Bounds();
-                const float p = layout_.horizontalPadding;
-                const float width = std::max(layout_.actionWidth, Font().size * 6);
-                for (size_t i = 0; i < Children().size(); ++i)
-                {
-                    float x = i == 0 ? p
-                                     : b.width - p - width - (width + layout_.actionGap) * (Children().size() - 1 - i);
-                    Children()[i]->Arrange(
-                        {b.x + x, b.y + Style().padding, width, std::max(0.f, b.height - 2 * Style().padding)});
-                }
-            }
-            void OnRender(LWSUI::Canvas& canvas) override
-            {
-                auto b = Bounds();
-                canvas.Fill(b.x, b.y, b.width, b.height, Style().background);
-                Container::OnRender(canvas);
-            }
-
-          private:
-
-            SettingsLayout layout_;
-        };
-    }  // namespace
     struct SettingsView::Binding
     {
         std::string id, search;
@@ -147,21 +64,21 @@ namespace LWSSettings
                     auto& control = own(std::make_unique<LWSUI::FilePicker>());
                     editor = &control;
                     refresh = [&control](const Value& v) { control.SetValue(std::get<std::string>(v)); };
-                    Connect(control.OnEdit, [edit](const auto& value, auto phase) { edit(value, phase); });
+                    Connect(control.OnEdit, [edit](const auto& value, auto phase) { (void) edit(value, phase); });
                 }
                 else if constexpr (std::is_same_v<S, BooleanDefinition>)
                 {
                     auto& control = own(std::make_unique<LWSUI::CheckBox>());
                     editor = &control;
                     refresh = [&control](const Value& v) { control.SetValue(std::get<bool>(v)); };
-                    Connect(control.OnChange, [edit](bool value) { edit(value, LWSUI::EditPhase::Commit); });
+                    Connect(control.OnChange, [edit](bool value) { (void) edit(value, LWSUI::EditPhase::Commit); });
                 }
                 else if constexpr (std::is_same_v<S, ColorDefinition>)
                 {
                     auto& control = own(std::make_unique<LWSUI::ColorPicker>());
                     editor = &control;
                     refresh = [&control](const Value& v) { control.SetValue(std::get<LLUtils::Color>(v)); };
-                    Connect(control.OnEdit, [edit](auto value, auto phase) { edit(value, phase); });
+                    Connect(control.OnEdit, [edit](auto value, auto phase) { (void) edit(value, phase); });
                 }
                 else if constexpr (std::is_same_v<S, IntegerDefinition> || std::is_same_v<S, DecimalDefinition>)
                 {
@@ -170,10 +87,17 @@ namespace LWSSettings
                     {
                         editor = &control;
                         refresh = [&control](const Value& v) { control.SetValue(std::get<T>(v)); };
-                        Connect(control.OnEdit, [edit](T value, auto phase) { edit(value, phase); });
+                        Connect(control.OnEdit, [edit](T value, auto phase) { (void) edit(value, phase); });
                     };
                     if (spec.presentation == NumericPresentation::Slider)
-                        setup(own(std::make_unique<internal::SliderValueEditor<T>>(spec)));
+                    {
+                        auto& slider = own(std::make_unique<LWSUI::Slider>());
+                        auto& value = slider.template ConfigureValue<T>({spec.minimum, spec.maximum, spec.step},
+                                                                        spec.defaultValue);
+                        editor = &slider;
+                        refresh = [&value](const Value& v) { value.SetValue(std::get<T>(v)); };
+                        Connect(value.OnEdit, [edit](T value, auto phase) { (void) edit(value, phase); });
+                    }
                     else
                         setup(own(std::make_unique<LWSUI::NumericEdit<T>>(
                             LWSUI::NumericSpec<T>{spec.minimum, spec.maximum, spec.step})));
@@ -188,7 +112,7 @@ namespace LWSSettings
                         editor = &control;
                         refresh = [&control](const Value& v) { control.SetValue(std::get<std::string>(v)); };
                         Connect(control.OnChange,
-                                [edit](const std::string& value) { edit(value, LWSUI::EditPhase::Commit); });
+                                [edit](const std::string& value) { (void) edit(value, LWSUI::EditPhase::Commit); });
                     };
                     if (spec.presentation == ChoicePresentation::Radio)
                         setup(own(std::make_unique<LWSUI::RadioGroup>(choices)));
@@ -224,12 +148,17 @@ namespace LWSSettings
         {
             filterButtons_[i] = &Emplace<LWSUI::Button>(names[i]);
             filterButtons_[i]->SetHighlightPattern("");
+            filterButtons_[i]->sizeToContent = true;
             clicks_.push_back(filterButtons_[i]->OnClick.Connect([this, i] { SetValueFilter(SettingValueFilter(i)); }));
         }
         StyleFilterButtons();
         for (size_t i = 0; i < groupButtons_.size(); ++i)
         {
-            groupButtons_[i] = &Emplace<GroupActionButton>(i == 0);
+            groupButtons_[i] = &Emplace<LWSUI::GlyphButton>(i == 0 ? LWSUI::Glyph::DoubleChevronDown
+                                                                   : LWSUI::Glyph::DoubleChevronUp);
+            groupButtons_[i]->SetText(i == 0 ? "Expand all" : "Collapse all");
+            groupButtons_[i]->focusable = false;
+            groupButtons_[i]->SetTooltip(i == 0 ? "Expand all" : "Collapse all");
             groupButtons_[i]->SetStyle(theme_.search);
             groupButtons_[i]->SetHighlightPattern("");
             clicks_.push_back(groupButtons_[i]->OnClick.Connect([this, i] { SetGroupsExpanded(i == 0); }));
@@ -260,13 +189,18 @@ namespace LWSSettings
         locationScroll_->SetContent(std::move(location));
         StyleLocation();
         locationScroll_->SetVisible(false);
-        actions_ = &Emplace<ActionsBar>(theme_.layout);
+        actions_ = &Emplace<LWSUI::FlowPanel>();
+        actions_->alignEnd = true;
+        actions_->firstLeading = true;
         actions_->SetStyle(theme_.footer);
         actions_->SetHighlightPattern("");
         auto action =
             [&](std::string name, std::function<void()> callback, LWSUI::EditPhase phase = LWSUI::EditPhase::Commit)
         {
-            auto& button = actions_->Emplace<LWSUI::Button>(name);
+            auto ownedButton = std::make_unique<LWSUI::Button>(name);
+            auto& button = *ownedButton;
+            button.sizeToContent = true;
+            actions_->AddItem(std::move(ownedButton));
             button.focusLossPhase = phase;
             button.flat = true;
             button.SetForeground(name == "Reset all" || name == "Cancel" || name == "Revert" ? theme_.footer.muted
@@ -336,6 +270,50 @@ namespace LWSSettings
                        }
                    }
                });
+        layout_ = &Emplace<LWSUI::DockPanel>();
+        const auto take = [&](LWSUI::Control* control) { return Remove(*control); };
+        layout_->AddDocked(take(ownedHeader_), LWSUI::Dock::Top);
+        auto entry = std::make_unique<LWSUI::DockPanel>();
+        clearSearch_->sizeToContent = true;
+        entry->AddDocked(take(clearSearch_), LWSUI::Dock::Right);
+        entry->AddDocked(take(search_), LWSUI::Dock::Fill);
+        auto controls = std::make_unique<LWSUI::StackPanel>();
+        controls->orientation = LWSUI::Orientation::Horizontal;
+        controls->sizeToContent = true;
+        auto filters = std::make_unique<LWSUI::StackPanel>();
+        filters->orientation = LWSUI::Orientation::Horizontal;
+        filters->sizeToContent = true;
+        filters->spacing = 0;
+        for (auto* button : filterButtons_)
+            filters->Add(take(button));
+        for (auto* button : groupButtons_)
+            controls->Add(take(button));
+        auto flow = std::make_unique<LWSUI::FlowPanel>();
+        searchFlow_ = flow.get();
+        flow->AddItem(std::move(entry), true, 180);
+        flow->AddItem(std::move(filters));
+        flow->AddItem(std::move(controls));
+        auto searchPanel = std::make_unique<LWSUI::Panel>(std::move(flow));
+        searchPanel_ = searchPanel.get();
+        layout_->AddDocked(std::move(searchPanel), LWSUI::Dock::Top);
+        auto footer = std::make_unique<LWSUI::Panel>(take(actions_));
+        footerPanel_ = footer.get();
+        auto treePanel = std::make_unique<LWSUI::Panel>(take(treeScroll_));
+        treePanel_ = treePanel.get();
+        auto details = std::make_unique<LWSUI::DockPanel>();
+        details->AddDocked(take(descriptionTitle_), LWSUI::Dock::Top);
+        auto metadata = std::make_unique<LWSUI::DockPanel>();
+        metadata->AddDocked(take(status_), LWSUI::Dock::Top);
+        metadata->AddDocked(take(locationScroll_), LWSUI::Dock::Fill);
+        details->AddDocked(std::move(metadata), LWSUI::Dock::Bottom, 0, .5f);
+        details->AddDocked(take(descriptionScroll_), LWSUI::Dock::Fill);
+        auto descriptionPanel = std::make_unique<LWSUI::Panel>(std::move(details));
+        descriptionPanel_ = descriptionPanel.get();
+        auto split = std::make_unique<LWSUI::SplitPanel>(std::move(treePanel), std::move(descriptionPanel));
+        split_ = split.get();
+        layout_->AddDocked(std::move(split), LWSUI::Dock::Fill);
+        layout_->AddDocked(std::move(footer), LWSUI::Dock::Bottom);
+        surface_ = &Emplace<LWSUI::Panel>(Remove(*layout_));
         searchConnection_ = search_->OnEdit.Connect([this](const auto& text, LWSUI::EditPhase) { SetFilter(text); });
         changeConnection_ = document_.OnChange.Connect([this](const Change& change) { Refresh(change); });
         finishedConnection_ = document_.OnEditFinished.Connect([this](const std::string& id, EditPhase, ChangeOrigin)
@@ -354,8 +332,19 @@ namespace LWSSettings
         valuesReloadConnection_ = document_.OnValuesReload.Connect([this] { ReloadValues(); });
         persistenceConnection_ = document_.OnPersistenceChanged.Connect([this] { UpdateStatus(); });
         Rebuild();
+        SetTheme(theme_);
     }
     SettingsView::~SettingsView() = default;
+    void SettingsView::OnDetach()
+    {
+        filterPending_ = false;
+        filterDirty_ = true;
+    }
+    void SettingsView::OnAttach()
+    {
+        if (filterDirty_)
+            RequestFilterUpdate();
+    }
     void SettingsView::SetIcon(LWS::BitmapSharedPtr icon)
     {
         headerState_->icon = std::move(icon);
@@ -371,7 +360,7 @@ namespace LWSSettings
     void SettingsView::MoveHeaderTo(LWSUI::MenuBar& bar)
     {
         if (!ownedHeader_) throw std::logic_error("Settings header has already been moved");
-        auto header = Remove(*ownedHeader_);
+        auto header = layout_->Take(*ownedHeader_);
         ownedHeader_ = nullptr;
         bar.SetContent(std::move(header));
         auto* presenter = static_cast<internal::SettingsHeader*>(bar.Content());
@@ -400,7 +389,30 @@ namespace LWSSettings
         status_->SetStyle(theme_.description);
         StyleLocation();
         actions_->SetStyle(theme_.footer);
-        static_cast<ActionsBar&>(*actions_).SetLayout(theme_.layout);
+        const auto& l = theme_.layout;
+        searchPanel_->SetStyle(theme_.search);
+        searchPanel_->padding = LWSUI::Insets{l.horizontalPadding, 0, l.horizontalPadding, l.sectionGap};
+        searchFlow_->gap = searchFlow_->rowGap = theme_.search.spacing;
+        groupButtons_[0]->Parent()->SetStyle(theme_.search);
+        static_cast<LWSUI::StackPanel*>(groupButtons_[0]->Parent())->spacing = theme_.search.spacing;
+        treePanel_->SetStyle(theme_.tree);
+        descriptionPanel_->SetStyle(theme_.description);
+        descriptionPanel_->padding = LWSUI::Insets{l.horizontalPadding - theme_.description.labelPadding,
+                                                   theme_.description.padding,
+                                                   l.horizontalPadding - theme_.description.labelPadding,
+                                                   theme_.description.padding};
+        static_cast<LWSUI::DockPanel*>(descriptionPanel_->Content())->gap = l.descriptionTitleGap;
+        footerPanel_->SetStyle(theme_.footer);
+        footerPanel_->padding = LWSUI::Insets{l.horizontalPadding, theme_.footer.padding, l.horizontalPadding,
+                                              theme_.footer.padding};
+        footerPanel_->minimumHeight = l.footerHeight;
+        actions_->gap = actions_->rowGap = l.actionGap;
+        actions_->minimumItemWidth = l.actionWidth;
+        split_->SetStyle(theme_.description);
+        split_->SetDefaultTrailingSize(l.descriptionHeight, l.descriptionMaxFraction);
+        split_->SetMinimumSizes(theme_.tree.treeRowHeight, theme_.description.headingFont.size * 1.4f +
+                                                               theme_.description.font.size * 1.4f +
+                                                               2 * theme_.description.padding);
         for (auto& child : actions_->Children())
         {
             auto& button = static_cast<LWSUI::Button&>(*child);
@@ -487,6 +499,7 @@ namespace LWSSettings
         status_->SetText(!validation_.empty()       ? validation_
                          : !operationError_.empty() ? operationError_
                                                     : information_);
+        status_->SetVisible(!status_->Text().empty());
         status_->SetForeground(
             !validation_.empty() || !operationError_.empty() ? std::optional{theme_.description.error} : std::nullopt);
     }
@@ -753,6 +766,7 @@ namespace LWSSettings
     }
     void SettingsView::RequestFilterUpdate()
     {
+        filterDirty_ = true;
         if (filterPending_) return;
         if (!Host()) { UpdateFilter(); return; }
         filterPending_ = true;
@@ -767,6 +781,7 @@ namespace LWSSettings
     }
     void SettingsView::UpdateFilter()
     {
+        filterDirty_ = false;
         bool any = false;
         for (auto& binding : bindings_)
         {
@@ -838,6 +853,8 @@ namespace LWSSettings
     }
     bool SettingsView::OnPreviewInput(const LWSUI::Input& input)
     {
+        if (Container::OnPreviewInput(input))
+            return true;
         using Key = LWS::KeyCode;
         if (input.kind != LWSUI::InputKind::KeyDown)
             return false;
@@ -866,7 +883,7 @@ namespace LWSSettings
         }
         if (input.control && input.key == Key::S)
         {
-            if (Finish(LWSUI::EditPhase::Commit))
+            if (Host() ? Host()->Finish(LWSUI::EditPhase::Commit) : Finish(LWSUI::EditPhase::Commit))
             {
                 Report(SaveChanges());
             }
@@ -874,7 +891,7 @@ namespace LWSSettings
         }
         if (input.control && input.key == Key::Enter)
         {
-            if (Finish(LWSUI::EditPhase::Commit))
+            if (Host() ? Host()->Finish(LWSUI::EditPhase::Commit) : Finish(LWSUI::EditPhase::Commit))
                 Report(document_.Apply());
             return true;
         }
@@ -895,127 +912,13 @@ namespace LWSSettings
     }
     LWSUI::Size SettingsView::OnMeasure(LWSUI::Size available)
     {
-        const auto& l = theme_.layout;
-        if (ownedHeader_) ownedHeader_->Measure(available);
-        for (auto* c : std::array<LWSUI::Control*, 5>{search_, clearSearch_, descriptionTitle_, status_, actions_})
-            c->Measure(available);
-        for (auto* button : filterButtons_) button->Measure(available);
-        for (auto* button : groupButtons_) button->Measure(available);
-        descriptionScroll_->Measure({std::max(1.f, available.width - 2 * l.horizontalPadding), l.descriptionHeight});
-        locationScroll_->Measure({std::max(1.f, available.width - 2 * l.horizontalPadding), l.descriptionHeight});
-        treeScroll_->Measure({available.width, available.height});
+        UpdateGroupActions();
+        UpdateStatus();
+        surface_->Measure(available);
         return available;
     }
     void SettingsView::OnArrange()
     {
-        UpdateGroupActions();
-        const auto& l = theme_.layout;
-        auto b = Bounds();
-        UpdateStatus();
-        const float p = l.horizontalPadding, inner = std::max(0.f, b.width - 2 * p);
-        const float header = ownedHeader_ ? ownedHeader_->DesiredSize().height : 0.f;
-        const auto buttonWidth = [&](const auto& buttons)
-        {
-            float width = 0;
-            for (auto* button : buttons)
-                width = std::max(width, Host() ? Host()->MeasureText(button->Text(), 10000, false, button->Font()).width
-                                               : button->Text().size() * button->Font().size);
-            return width + 2 * theme_.search.padding;
-        };
-        float searchRow = std::max({l.searchHeight, search_->DesiredSize().height,
-                                    clearSearch_->DesiredSize().height});
-        for (auto* button : filterButtons_) searchRow = std::max(searchRow, button->DesiredSize().height);
-        const float filterWidth = buttonWidth(filterButtons_), groupWidth = searchRow;
-        const float selectorWidth = 3 * filterWidth;
-        const float gap = theme_.search.spacing;
-        const float groupGap = std::min(gap, inner);
-        const float actionsWidth = 2 * groupWidth + groupGap;
-        const float controlsWidth = selectorWidth + gap + actionsWidth;
-        const bool stacked = inner < controlsWidth + gap + 12 * search_->Font().size;
-        const bool separateActions = inner < controlsWidth;
-        const int rows = separateActions ? 3 : stacked ? 2 : 1;
-        const float search = rows * searchRow + (rows - 1) * gap;
-        const float footer = actions_->DesiredSize().height;
-        const float status = status_->Text().empty() ? 0.f : std::max(l.statusHeight, status_->DesiredSize().height);
-        const float title = descriptionTitle_->DesiredSize().height;
-        const float locationWanted = locationScroll_->Visible() ? locationScroll_->DesiredSize().height : 0.f;
-        const float locationMinimum = std::min(locationWanted,
-            location_->Font().size * 1.4f + 2 * location_->Style().labelPadding);
-        const float detailsMinimum = title + theme_.description.font.size * 1.4f + status + locationMinimum +
-                                     2 * theme_.description.padding + l.descriptionTitleGap;
-        const float availableBottom = std::max(0.f, b.height - header - search - l.sectionGap - footer);
-        const float details = std::min(std::max(l.descriptionHeight, detailsMinimum),
-                                       availableBottom * l.descriptionMaxFraction);
-        const float treeTop = b.y + header + search + l.sectionGap;
-        const float footerTop = std::max(treeTop, b.y + b.height - footer);
-        const float descriptionTop = std::max(treeTop, footerTop - details);
-        headerBounds_ = {b.x, b.y, b.width, header};
-        searchBounds_ = {b.x, b.y + header, b.width, search + l.sectionGap};
-        descriptionBounds_ = {b.x, descriptionTop, b.width, footerTop - descriptionTop};
-        footerBounds_ = {b.x, footerTop, b.width, footer};
-        if (ownedHeader_) ownedHeader_->Arrange(headerBounds_);
-        const float searchWidth = stacked ? inner : std::max(0.f, inner - controlsWidth - gap);
-        const float clearWidth = clearSearch_->Visible() ? std::min(searchRow, searchWidth) : 0.f;
-        // Reserve the trailing square so long queries cannot paint beneath the clear button.
-        search_->Arrange({b.x + p, b.y + header, searchWidth - clearWidth, searchRow});
-        clearSearch_->Arrange({b.x + p + searchWidth - clearWidth, b.y + header, clearWidth, searchRow});
-        const float selectorX = stacked ? b.x + p : b.x + b.width - p - controlsWidth;
-        const float selectorY = b.y + header + (stacked ? searchRow + gap : 0);
-        const float segment = std::min(filterWidth, inner / 3);
-        for (size_t i = 0; i < filterButtons_.size(); ++i)
-            filterButtons_[i]->Arrange({selectorX + i * segment, selectorY, segment, searchRow});
-        const float groupX = separateActions ? b.x + p : b.x + b.width - p - actionsWidth;
-        const float groupY = selectorY + (separateActions ? searchRow + gap : 0);
-        const float actionWidth = std::min(groupWidth, std::max(0.f, (inner - groupGap) / 2));
-        for (size_t i = 0; i < groupButtons_.size(); ++i)
-            groupButtons_[i]->Arrange({groupX + i * (actionWidth + groupGap), groupY, actionWidth, searchRow});
-        treeScroll_->Arrange({b.x, treeTop, b.width, std::max(0.f, descriptionTop - treeTop)});
-        const float headingHeight = std::min(title, std::max(0.f, details - 2 * theme_.description.padding));
-        descriptionTitle_->Arrange({b.x + p - theme_.description.labelPadding,
-                                     descriptionTop + theme_.description.padding, inner, headingHeight});
-        const float bodyTop = std::min(footerTop, descriptionTop + theme_.description.padding +
-                                                    headingHeight + l.descriptionTitleGap);
-        const float contentHeight = std::max(0.f, footerTop - theme_.description.padding - bodyTop);
-        const float statusHeight = std::min(status, contentHeight);
-        // Keep the breadcrumb pinned below status. Deep paths scroll independently
-        // and consume at most half the space otherwise available for the description.
-        const float locationHeight = std::min(locationWanted, (contentHeight - statusHeight) / 2);
-        const float locationTop = bodyTop + contentHeight - locationHeight;
-        const float statusTop = locationTop - statusHeight;
-        descriptionScroll_->Arrange({b.x + p - theme_.description.labelPadding, bodyTop, inner,
-                                     std::max(0.f, statusTop - bodyTop)});
-        status_->Arrange({b.x + p - theme_.description.labelPadding, statusTop, inner, statusHeight});
-        locationScroll_->Arrange({b.x + p - theme_.description.labelPadding, locationTop, inner, locationHeight});
-        actions_->Arrange(footerBounds_);
-    }
-    void SettingsView::OnRender(LWSUI::Canvas& canvas)
-    {
-        auto fill = [&](LWSUI::Rect r, LLUtils::Color color) { canvas.Fill(r.x, r.y, r.width, r.height, color); };
-        fill(Bounds(), theme_.tree.background);
-        fill(headerBounds_, theme_.header.background);
-        fill(searchBounds_, theme_.search.background);
-        fill(descriptionBounds_, theme_.description.background);
-        fill(footerBounds_, theme_.footer.background);
-        canvas.Fill(descriptionBounds_.x, descriptionBounds_.y, descriptionBounds_.width,
-                    theme_.description.borderWidth, theme_.description.line);
-        Container::OnRender(canvas);
-        if (!Host() || Host()->HasPopup()) return;
-        size_t hint = groupButtons_.size();
-        for (size_t i = 0; i < groupButtons_.size(); ++i)
-            if (groupButtons_[i]->Enabled() && groupButtons_[i]->Hovered()) { hint = i; break; }
-        if (hint == groupButtons_.size()) return;
-        // These local hints follow pointer hover only; actions never transfer focus.
-        const std::string_view text = groupButtons_[hint]->Text();
-        const auto bounds = Bounds(), button = groupButtons_[hint]->Bounds();
-        const auto& style = theme_.popups;
-        const float padding = style.padding;
-        const float width = std::min(bounds.width, canvas.Measure(text, style.smallFont) + 2 * padding);
-        const float height = canvas.TextHeight(text, std::max(1.f, width - 2 * padding), style.smallFont, false) + 2 * padding;
-        const float x = std::clamp(button.x, bounds.x, bounds.x + std::max(0.f, bounds.width - width));
-        float y = button.y + button.height + theme_.search.spacing;
-        if (y + height > bounds.y + bounds.height) y = std::max(bounds.y, button.y - height - theme_.search.spacing);
-        canvas.Fill(x, y, width, height, style.background);
-        canvas.CenteredText(text, x + padding, y, std::max(0.f, width - 2 * padding), height,
-                            style.foreground, style.smallFont);
+        surface_->Arrange(Bounds());
     }
 }  // namespace LWSSettings

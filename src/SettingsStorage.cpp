@@ -1,7 +1,7 @@
 #include <LWSSettings/SettingsStorage.hpp>
 #include <nlohmann/json.hpp>
 #include "JsonFile.hpp"
-#include <charconv>
+#include "ValueCodec.hpp"
 #include <cmath>
 #include <fstream>
 #ifdef _WIN32
@@ -33,16 +33,10 @@ namespace LWSSettings
         {
             if (std::holds_alternative<ColorDefinition>(definition.specification))
             {
-                if (!json.is_string())
-                    Reject(definition.id, "Expected #RRGGBB or #RRGGBBAA");
-                auto text = json.get<std::string>();
-                uint32_t color = 0;
-                if ((text.size() != 7 && text.size() != 9) || text[0] != '#')
-                    Reject(definition.id, "Expected #RRGGBB or #RRGGBBAA");
-                auto [end, error] = std::from_chars(text.data() + 1, text.data() + text.size(), color, 16);
-                if (error != std::errc{} || end != text.data() + text.size())
-                    Reject(definition.id, "Invalid hexadecimal color");
-                return LLUtils::Color{text.size() == 7 ? (color << 8) | 255 : color};
+                auto color = Detail::DecodeColor(json);
+                if (!color)
+                    Reject(definition.id, color.error());
+                return *color;
             }
             if (std::holds_alternative<DecimalDefinition>(definition.specification) && json.is_number())
                 return json.get<double>();
@@ -178,8 +172,8 @@ namespace LWSSettings
         try
         {
             (void) json.dump();
-            if (!json.is_object() || json.value("version", 0) != 1 || !json.contains("children") ||
-                !json["children"].is_array())
+            if (!json.is_object() || !json.contains("version") || !json["version"].is_number_integer() ||
+                json["version"] != 1 || !json.contains("children") || !json["children"].is_array())
                 return std::unexpected(Error{"/", "Expected version 1 and a children array"});
             std::vector<Definition> definitions;
             for (size_t i = 0; i < json["children"].size(); ++i)
@@ -207,8 +201,8 @@ namespace LWSSettings
         try
         {
             (void) json.dump();
-            if (!json.is_object() || json.value("version", 0) != 1 || !json.contains("values") ||
-                !json["values"].is_object())
+            if (!json.is_object() || !json.contains("version") || !json["version"].is_number_integer() ||
+                json["version"] != 1 || !json.contains("values") || !json["values"].is_object())
                 return std::unexpected(Error{"/", "Expected version 1 and a values object"});
             Values values;
             for (const auto& [id, value] : json["values"].items())
@@ -236,15 +230,7 @@ namespace LWSSettings
     {
         Json json{{"version", 1}, {"values", Json::object()}};
         for (const auto& [id, value] : values)
-            json["values"][id] = std::visit(
-                [](const auto& v) -> Json
-                {
-                    if constexpr (std::is_same_v<std::decay_t<decltype(v)>, LLUtils::Color>)
-                        return FormatValue(v);
-                    else
-                        return v;
-                },
-                value);
+            json["values"][id] = Detail::EncodeValue(value);
         return json;
     }
     Status SettingsStorage::Write(const std::filesystem::path& path, const Values& values)

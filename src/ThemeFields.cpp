@@ -64,6 +64,9 @@ namespace LWSSettings
             {"menuRowHeight", &LWSUI::Theme::menuRowHeight},
             {"menuMaxRows", &LWSUI::Theme::menuMaxRows},
             {"menuPadding", &LWSUI::Theme::menuPadding},
+            {"menuBarHeight", &LWSUI::Theme::menuBarHeight},
+            {"menuBarPadding", &LWSUI::Theme::menuBarPadding},
+            {"menuArrowWidth", &LWSUI::Theme::menuArrowWidth},
             {"popupWidth", &LWSUI::Theme::popupWidth},
             {"popupHeight", &LWSUI::Theme::popupHeight},
             {"popupPadding", &LWSUI::Theme::popupPadding},
@@ -191,11 +194,13 @@ namespace LWSSettings
                 for (auto [name, member] : std::initializer_list<std::pair<const char*, int UI::*>>{
                          {"repeatDelayMs", &UI::repeatDelayMs},
                          {"repeatIntervalMs", &UI::repeatIntervalMs},
-                         {"accelerationMs", &UI::accelerationMs}})
+                         {"accelerationMs", &UI::accelerationMs},
+                         {"menuHoverDelayMs", &UI::menuHoverDelayMs}})
                     Add(
-                        fields, prefix + "/interaction/" + name, [=](const SettingsTheme& t) -> Value
-                        { return int64_t((t.*scope).*member); }, [=](SettingsTheme& t, const Value& v)
-                        { (t.*scope).*member = int(std::get<int64_t>(v)); }, 1, 60000, 1);
+                        fields, prefix + "/interaction/" + name,
+                        [=](const SettingsTheme& t) -> Value { return int64_t((t.*scope).*member); },
+                        [=](SettingsTheme& t, const Value& v) { (t.*scope).*member = int(std::get<int64_t>(v)); },
+                        std::string_view(name) == "menuHoverDelayMs" ? 0 : 1, 60000, 1);
             };
             addUI("base", &SettingsTheme::base);
             for (auto [name, scope] : sections)

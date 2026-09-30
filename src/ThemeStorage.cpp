@@ -2,7 +2,7 @@
 #include "ThemeFields.hpp"
 #include <LWSSettings/ThemeStorage.hpp>
 #include "JsonFile.hpp"
-#include <charconv>
+#include "ValueCodec.hpp"
 #include <fstream>
 namespace LWSSettings
 {
@@ -17,32 +17,14 @@ namespace LWSSettings
         {
             throw Invalid{{std::move(path), std::move(message)}};
         }
-        Json EncodeValue(const Value& value)
-        {
-            return std::visit(
-                [](const auto& v) -> Json
-                {
-                    if constexpr (std::is_same_v<std::decay_t<decltype(v)>, LLUtils::Color>)
-                        return FormatValue(Value{v});
-                    else
-                        return v;
-                },
-                value);
-        }
         Value DecodeValue(const Json& j, const ThemeField& field)
         {
             if (std::holds_alternative<ColorDefinition>(field.definition.specification))
             {
-                if (!j.is_string())
-                    Reject(field.path, "Expected #RRGGBB or #RRGGBBAA");
-                auto text = j.get<std::string>();
-                uint32_t color = 0;
-                if ((text.size() != 7 && text.size() != 9) || text[0] != '#')
-                    Reject(field.path, "Expected #RRGGBB or #RRGGBBAA");
-                auto [end, error] = std::from_chars(text.data() + 1, text.data() + text.size(), color, 16);
-                if (error != std::errc{} || end != text.data() + text.size())
-                    Reject(field.path, "Invalid color");
-                return LLUtils::Color{text.size() == 7 ? (color << 8) | 255 : color};
+                auto color = Detail::DecodeColor(j, "Invalid color");
+                if (!color)
+                    Reject(field.path, color.error());
+                return *color;
             }
             if (j.is_boolean())
                 return j.get<bool>();
@@ -102,7 +84,7 @@ namespace LWSSettings
             else
             {
                 auto& setting = std::get<SettingDefinition>(node.content);
-                j["default"] = EncodeValue(setting.DefaultValue());
+                j["default"] = Detail::EncodeValue(setting.DefaultValue());
                 std::visit(
                     [&](const auto& spec)
                     {
@@ -140,7 +122,7 @@ namespace LWSSettings
     {
         Json j = {{"version", 1}};
         for (const auto& [path, value] : values)
-            j[Json::json_pointer("/" + path)] = EncodeValue(value);
+            j[Json::json_pointer("/" + path)] = Detail::EncodeValue(value);
         return j;
     }
     std::expected<ThemeOverrides, Error> ThemeStorage::DecodeOverrides(const Json& input)

@@ -85,8 +85,9 @@ text edits; result membership remains stable until the query changes or values r
 The search input and action captions are excluded, and text selection takes priority.
 
 `LWSUIDemo`, under the LWS build output, constructs controls directly in C++ and
-links only `LWSUI::LWSUI`. Its nested tree logs control edits and group expansion
-to the console. Pass `--smoke` for a short run or `--snapshot` for `controls.ppm`.
+links only `LWSUI::LWSUI`. Its connected workspace includes native panes, a five-pane nested `SplitPanel` preview,
+and control/menu galleries. Pass `--smoke` for a short run or `--snapshot` for
+rendered gallery and workspace images.
 
 ## Ownership and responsibilities
 
@@ -255,12 +256,17 @@ no host rendering/input switch needs modification. Theme colors, font size,
 spacing and repeat timings are centralized in `LWSUI::Theme`.
 
 The reference and verification records are in `docs/reference.md` and
-`docs/verification.md`. Existing checks use public APIs; there is no friend
-access to an implementation object. No new automated test cases were added.
+`docs/verification.md`. Regression tests cover document transactions, storage validation, theme migrations,
+view composition, filtering across attachment, and header validation. Most checks
+use public APIs; small private test seams inspect the owned theme editor and
+host tooltip overlay.
 
 The settings view retains the reference's indented tree labels, aligned editor
 column, selection and hover rows, compact numeric rockers, radio markers, details
-panel and footer actions. Search reveals matching descendants without losing
+panel and footer actions. Drag the shared `SplitPanel` divider to resize the settings
+and description areas; double-click it or press Home while focused to restore the
+theme default. The ratio is retained while the view lives, without disk persistence.
+Footer actions wrap at narrow widths. Search reveals matching descendants without losing
 collapsed state. Up/Down and Tab navigate tree rows; Left/Right collapse or expand
 groups and change choices. Ctrl+F searches, Ctrl+S saves, Ctrl+Enter applies, and
 Ctrl+R / Ctrl+Shift+R reset a setting / all settings. Color editing uses a centered

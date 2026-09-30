@@ -92,8 +92,7 @@ namespace LWSSettings
                                                 : SettingsStorage::LoadTemplateFile(candidate, templateFile);
         if (!definitions)
             return definitions;
-        // Older full templates lack only this newly introduced metric. Insert it
-        // beside the existing Reset width, preserving custom groups/labels/order.
+        // Insert known additions beside their prior catalog siblings, preserving custom grouping.
         // Other missing/unknown fields still fail the strict catalog validation below.
         auto upgraded = candidate.Definitions();
         bool changed = false;
@@ -128,10 +127,17 @@ namespace LWSSettings
                 }
         };
         upgradeDefaults(upgradeDefaults, upgraded);
+        const std::map<std::string, std::string> additions{{"resetRightMargin", "resetWidth"},
+                                                           {"menuBarHeight", "menuPadding"},
+                                                           {"menuBarPadding", "menuBarHeight"},
+                                                           {"menuArrowWidth", "menuBarPadding"},
+                                                           {"menuHoverDelayMs", "accelerationMs"}};
         for (const auto& field : ThemeFields::All())
-            if (field.path.ends_with("/resetRightMargin") && !candidate.Find(field.path))
+        {
+            const auto name = field.path.substr(field.path.rfind('/') + 1);
+            if (auto known = additions.find(name); known != additions.end() && !candidate.Find(field.path))
             {
-                const auto sibling = field.path.substr(0, field.path.rfind('/') + 1) + "resetWidth";
+                const auto sibling = field.path.substr(0, field.path.rfind('/') + 1) + known->second;
                 auto insert = [&](auto&& self, std::vector<Definition>& nodes) -> bool
                 {
                     for (auto it = nodes.begin(); it != nodes.end(); ++it)
@@ -147,9 +153,11 @@ namespace LWSSettings
                     return false;
                 };
                 if (!insert(insert, upgraded))
-                    return std::unexpected(Error{"template", "Theme template is missing Reset width"});
+                    return std::unexpected(
+                        Error{"template", "Theme template is missing migration sibling: " + sibling});
                 changed = true;
             }
+        }
         if (changed)
         {
             auto valid = candidate.ReplaceDefinitions(std::move(upgraded));

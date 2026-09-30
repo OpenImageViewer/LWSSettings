@@ -40,7 +40,8 @@ namespace LWSSettings
 
         LWSUI::Size OnMeasure(LWSUI::Size) override;
         void OnArrange() override;
-        void OnRender(LWSUI::Canvas&) override;
+        void OnAttach() override;
+        void OnDetach() override;
         bool OnPreviewInput(const LWSUI::Input&) override;
 
       private:
@@ -74,14 +75,19 @@ namespace LWSSettings
         SettingsTheme theme_;
         bool collapseGroups_ = false;
         SettingValueFilter valueFilter_ = SettingValueFilter::All;
-        bool filterPending_ = false;
+        bool filterPending_ = false, filterDirty_ = false;
         std::array<LWSUI::Button*, 3> filterButtons_{};
         std::array<LWSUI::Button*, 2> groupButtons_{};
         LWSUI::Label* empty_ = nullptr;
         std::shared_ptr<internal::SettingsHeaderState> headerState_;
         internal::SettingsHeader* ownedHeader_ = nullptr;
         LWSUI::ControlHandle externalHeader_;
-        LWSUI::Rect headerBounds_, searchBounds_, descriptionBounds_, footerBounds_;
+        LWSUI::Panel* surface_;
+        LWSUI::DockPanel* layout_ = nullptr;
+        LWSUI::SplitPanel* split_ = nullptr;
+        LWSUI::Panel *searchPanel_ = nullptr, *treePanel_ = nullptr, *descriptionPanel_ = nullptr,
+                     *footerPanel_ = nullptr;
+        LWSUI::FlowPanel* searchFlow_ = nullptr;
         LWSUI::Label* descriptionTitle_;
         LWSUI::TextBox* search_;
         LWSUI::Button* clearSearch_;
@@ -92,7 +98,7 @@ namespace LWSSettings
         LWSUI::ScrollView* locationScroll_;
         LWSUI::Label* location_;
         LWSUI::Label* status_;
-        LWSUI::Container* actions_;
+        LWSUI::FlowPanel* actions_;
         std::string filter_, validation_, operationError_, information_;
         // Sorted by ID for lookup; visual order belongs to the control tree.
         // Sorting unique_ptrs preserves the addresses captured by editor callbacks.

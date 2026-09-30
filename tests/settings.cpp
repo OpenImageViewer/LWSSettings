@@ -28,6 +28,13 @@ namespace LWSSettings::internal
         static SettingsEditor& Editor(ThemeEditor& editor) { return editor.editor_; }
     };
 }
+namespace LWSUI::internal
+{
+    struct UIHostTestAccess
+    {
+        static void RenderTooltip(UIHost& host, Canvas& canvas) { host.RenderTooltip(canvas); }
+    };
+}
 using LWSUI::NextCharacter;
 using LWSUI::PreviousCharacter;
 using LWSUI::SingleLine;
@@ -250,7 +257,9 @@ TEST_CASE("Templates create typed defaults without a platform session")
             }
         }
     };
-    removeField(removeField, oldTemplate["children"], "/resetRightMargin");
+    for (auto suffix :
+         {"/resetRightMargin", "/menuBarHeight", "/menuBarPadding", "/menuArrowWidth", "/menuHoverDelayMs"})
+        removeField(removeField, oldTemplate["children"], suffix);
     oldTemplate["children"][0]["label"] = "Custom base group";
     oldTemplate["children"][0]["children"][0]["children"][0]["label"] = "Custom background";
     TempFile legacyTemplate;
@@ -1473,7 +1482,7 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
                     REQUIRE(expandBounds.x >= last.x + last.width + spacing - .001f);
                 else
                     REQUIRE(expandBounds.y - selector.y - selector.height == Catch::Approx(spacing).margin(.001));
-                if (width == 300) REQUIRE(expandBounds.y > selector.y);
+                // Intrinsic actions may share the selector row when all controls fit.
             }
         }
     }
@@ -1496,6 +1505,7 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
         const auto viewBounds = editor.View()->Bounds();
         canvas.Begin(int(viewBounds.width), int(viewBounds.height));
         editor.View()->Render(canvas);
+        LWSUI::internal::UIHostTestAccess::RenderTooltip(*host, canvas);
         const auto pixels = canvas.End();
         const auto actionBounds = collapseAll->Bounds();
         const int top = int(std::ceil(actionBounds.y + actionBounds.height + hintTheme.search.spacing));
@@ -1833,7 +1843,8 @@ TEST_CASE("Numeric steps validate metadata and preserve arithmetic boundaries")
         REQUIRE(slider);
         Layout(*numeric->Parent(), 300, 40);
         REQUIRE(p.SetValue("ratio", 1.03));
-        Input down{Kind::Down}; down.x = slider->Bounds().x + slider->Bounds().width * .08f;
+        Input down{Kind::Down};
+        down.x = slider->TrackBounds().x + slider->TrackBounds().width * .08f;
         slider->Dispatch(down);
         REQUIRE(FormatValue(*p.WorkingValue("ratio")) == "0.7");
         KeyPress(*slider, Key::Escape);
@@ -1845,23 +1856,24 @@ TEST_CASE("Numeric steps validate metadata and preserve arithmetic boundaries")
         REQUIRE(numeric->Finish(Phase::Commit));
         REQUIRE(p.WorkingValue("ratio") == Value{1.27});
         REQUIRE(slider->Value() == Catch::Approx((1.27 - .5) / 2.5));
-        down.x = slider->Bounds().x;
+        down.x = slider->TrackBounds().x;
         slider->Dispatch(down); slider->Dispatch({Kind::Up});
         REQUIRE(p.WorkingValue("ratio") == Value{.5});
-        down.x = slider->Bounds().x + slider->Bounds().width;
+        down.x = slider->TrackBounds().x + slider->TrackBounds().width - .01f;
         slider->Dispatch(down); slider->Dispatch({Kind::Up});
         REQUIRE(p.WorkingValue("ratio") == Value{3.0});
         for (float width : {300.f, 140.f, 80.f})
         {
             Layout(*numeric->Parent(), width, 40);
-            REQUIRE(slider->Bounds().width >= 0);
-            REQUIRE(slider->Bounds().x + slider->Bounds().width <= numeric->Bounds().x);
+            REQUIRE(slider->TrackBounds().width >= 0);
+            REQUIRE(slider->TrackBounds().x + slider->TrackBounds().width <= numeric->Bounds().x);
             REQUIRE(numeric->Bounds().x + numeric->Bounds().width <= width);
-            if (slider->Bounds().width > slider->Style().sliderThumbWidth)
+            if (slider->TrackBounds().width > slider->Style().sliderThumbWidth)
             {
                 REQUIRE(p.SetValue("ratio", 1.0));
                 const float thumb = slider->Style().sliderThumbWidth;
-                down.x = slider->Bounds().x + float(slider->Value()) * (slider->Bounds().width - thumb) + thumb / 2;
+                down.x = slider->TrackBounds().x + float(slider->Value()) * (slider->TrackBounds().width - thumb) +
+                         thumb / 2;
                 slider->Dispatch(down);
                 REQUIRE(p.WorkingValue("ratio") == Value{1.0}); // Grabbing the thumb must not jump.
                 slider->Dispatch({Kind::Up});
@@ -1919,7 +1931,8 @@ TEST_CASE("Rocker holds preview repeatedly and confirm once for autosave")
     Layout(*field->Parent(), 300, 40);
     std::vector<Change> sliderEvents;
     auto listener = sliderDoc.OnChange.Connect([&](const Change& change) { sliderEvents.push_back(change); });
-    Input drag{Kind::Down}; drag.x = slider->Bounds().width * .6f;
+    Input drag{Kind::Down};
+    drag.x = slider->TrackBounds().width * .6f;
     slider->Dispatch(drag);
     REQUIRE(sliderDoc.WorkingValue("count") == Value{int64_t{6}});
     REQUIRE_FALSE(std::filesystem::exists(sliderFile.path));
@@ -1983,7 +1996,8 @@ TEST_CASE("Rocker cancellation invalid drafts and external updates stop repeats"
     auto* input = FindControl<LWSUI::TextBox>(*field);
     Layout(*field->Parent(), 300, 40);
     REQUIRE(p.SetValue("count", int64_t{4}));
-    Input drag{Kind::Down}; drag.x = slider->Bounds().width * .6f;
+    Input drag{Kind::Down};
+    drag.x = slider->TrackBounds().width * .6f;
     slider->Dispatch(drag);
     REQUIRE(p.WorkingValue("count") == Value{int64_t{6}});
     KeyPress(*slider, Key::Escape);
@@ -1996,7 +2010,8 @@ TEST_CASE("Rocker cancellation invalid drafts and external updates stop repeats"
     field->Finish(Phase::Cancel);
     slider->Dispatch(drag);
     REQUIRE(p.SetValue("count", int64_t{2}));
-    drag.kind = Kind::Move; drag.x = slider->Bounds().width;
+    drag.kind = Kind::Move;
+    drag.x = slider->TrackBounds().width;
     slider->Dispatch(drag); slider->Dispatch({Kind::Up});
     REQUIRE(p.WorkingValue("count") == Value{int64_t{2}});
     REQUIRE(field->Value() == 2);
@@ -2030,7 +2045,8 @@ TEST_CASE("Staged numeric rocker commits only on Apply and keyboard release ends
     auto* slider = FindControl<LWSUI::Slider>(*composite);
     Layout(*composite, 300, 40);
     sliderView.SetValueFilter(SettingValueFilter::Default);
-    Input drag{Kind::Down}; drag.x = slider->Bounds().width * .7f;
+    Input drag{Kind::Down};
+    drag.x = slider->TrackBounds().width * .7f;
     slider->Dispatch(drag);
     REQUIRE(staged.WorkingValue("count") == Value{int64_t{7}});
     REQUIRE(staged.AppliedValue("count") == Value{int64_t{3}});
@@ -3556,7 +3572,14 @@ TEST_CASE("Settings headers move into the bar without dangling controls", "[view
     auto* bar = host->MainMenu();
     REQUIRE(bar->Icon() != nullptr);
     REQUIRE(bar->Content() != nullptr);
-    REQUIRE(view->HeaderActions().Parent() == bar->Content());
+    const auto under = [](LWSUI::Control& control, LWSUI::Control* ancestor)
+    {
+        for (auto* p = control.Parent(); p; p = p->Parent())
+            if (p == ancestor)
+                return true;
+        return false;
+    };
+    REQUIRE(under(view->HeaderActions(), bar->Content()));
     REQUIRE(view->HeaderActions().Host() == host);
     auto* search = FindControl<LWSUI::TextBox>(*view);
     REQUIRE(search != nullptr);
@@ -3628,7 +3651,7 @@ TEST_CASE("Settings headers move into the bar without dangling controls", "[view
     REQUIRE(editor.Show());
     WaitForConfiguration(editor.View()->Host()->Window()); editor.View()->Host()->Update();
     REQUIRE(editor.View()->Host()->MainMenu()->Content() != nullptr);
-    REQUIRE(editor.View()->HeaderActions().Parent() == editor.View()->Host()->MainMenu()->Content());
+    REQUIRE(under(editor.View()->HeaderActions(), editor.View()->Host()->MainMenu()->Content()));
 }
 
 TEST_CASE("Settings live resize policy survives window recreation", "[viewer][resize]")
@@ -3665,4 +3688,139 @@ TEST_CASE("Settings live resize policy survives window recreation", "[viewer][re
     REQUIRE_FALSE(theme.Editor().View()->Host()->RedrawOnResize());
     theme.SetRedrawOnResize(true);
     REQUIRE(theme.Editor().View()->Host()->RedrawOnResize());
+}
+
+TEST_CASE("Schema versions reject coercion without changing document state", "[storage][version]")
+{
+    SettingsDocument document;
+    REQUIRE(SettingsStorage::LoadTemplate(document, Template()));
+    REQUIRE(document.SetValue("name", std::string{"retained"}));
+    const auto before = document.WorkingValues();
+    for (const Json version : {Json(1.5), Json(1.0), Json("1"), Json(true), Json(2), Json(nullptr)})
+    {
+        auto schema = Template();
+        schema["version"] = version;
+        REQUIRE_FALSE(SettingsStorage::LoadTemplate(document, schema));
+        REQUIRE(document.WorkingValues() == before);
+        auto values = SettingsStorage::EncodeValues(before);
+        values["version"] = version;
+        REQUIRE_FALSE(SettingsStorage::LoadValues(document, values));
+        REQUIRE(document.WorkingValues() == before);
+    }
+}
+TEST_CASE("Menu theme metrics preserve typed values and validate their ranges", "[theme][menu]")
+{
+    SettingsTheme theme;
+    theme.header.menuBarHeight = 64;
+    theme.header.menuBarPadding = 13;
+    theme.header.menuArrowWidth = 19;
+    theme.header.menuHoverDelayMs = 0;
+    auto decoded = ThemeStorage::Decode(ThemeStorage::Encode(theme));
+    REQUIRE(decoded);
+    REQUIRE(decoded->header.menuBarHeight == 64);
+    REQUIRE(decoded->header.menuBarPadding == 13);
+    REQUIRE(decoded->header.menuArrowWidth == 19);
+    REQUIRE(decoded->header.menuHoverDelayMs == 0);
+    for (auto field : {"menuBarHeight", "menuBarPadding", "menuArrowWidth"})
+    {
+        auto json = ThemeStorage::Encode(theme);
+        json["sections"]["header"]["metrics"][field] = -1;
+        REQUIRE_FALSE(ThemeStorage::Decode(json));
+    }
+}
+TEST_CASE("Narrow staged footers wrap without overlapping actions", "[viewer][layout]")
+{
+    SettingsDocument document({ApplyPolicy::OnApply, SavePolicy::Manual});
+    REQUIRE(SettingsStorage::LoadTemplate(document, Template()));
+    for (float font : {16.f, 28.f})
+    {
+        SettingsTheme theme;
+        theme.footer.font.size = font;
+        SettingsView view(document, "Settings", theme, true);
+        Layout(view, 480, 680);
+        std::vector<LWSUI::Button*> actions;
+        for (auto caption : {"Reset all", "Cancel", "Apply", "Revert", "Save"})
+        {
+            auto* button = FindButton(view, caption);
+            REQUIRE(button);
+            actions.push_back(button);
+            const auto b = button->Bounds();
+            REQUIRE(b.width > 0);
+            REQUIRE(b.height > 0);
+            REQUIRE(b.x >= 0);
+            REQUIRE(b.x + b.width <= 480);
+            REQUIRE(view.HitTest(b.x + b.width / 2, b.y + b.height / 2) == button);
+        }
+        for (size_t i = 0; i < actions.size(); ++i)
+            for (size_t j = i + 1; j < actions.size(); ++j)
+            {
+                const auto a = actions[i]->Bounds(), b = actions[j]->Bounds();
+                REQUIRE(
+                    (a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y));
+            }
+    }
+}
+TEST_CASE("Retained views reschedule pending filtering after attachment", "[viewer][filter][lifetime]")
+{
+    TestPlatform platform;
+    LWS::Window first(platform), second(platform);
+    REQUIRE(first.Create({.clientSize = {640, 600}, .visible = true}) == LWS::Result::Success);
+    REQUIRE(second.Create({.clientSize = {640, 600}, .visible = true}) == LWS::Result::Success);
+    WaitForConfiguration(first);
+    WaitForConfiguration(second);
+    SettingsDocument document; // The document must outlive both hosts' retained views.
+    LWSUI::UIHost firstHost(first), secondHost(second);
+    REQUIRE(SettingsStorage::LoadTemplate(document, Template()));
+    auto root = std::make_unique<LWSUI::Container>();
+    auto* parent = root.get();
+    auto& view = root->Emplace<SettingsView>(document);
+    firstHost.SetRoot(std::move(root));
+    firstHost.Update();
+    view.SetFilter("count");
+    auto retained = parent->Remove(view);
+    secondHost.SetRoot(std::move(retained));
+    firstHost.Update();
+    secondHost.Update();
+    auto* numeric = FindControl<LWSUI::NumericEdit<int64_t>>(view);
+    REQUIRE(numeric);
+    REQUIRE(numeric->Parent()->Visible());
+    view.SetFilter("no such setting");
+    secondHost.Update();
+    REQUIRE_FALSE(numeric->Parent()->Visible());
+    view.SetFilter("");
+    secondHost.Update();
+    REQUIRE(numeric->Parent()->Visible());
+}
+TEST_CASE("Save and Apply shortcuts validate relocated header drafts", "[viewer][header][validation]")
+{
+    TestPlatform platform;
+    EditorConfig config;
+    config.document.applyPolicy = ApplyPolicy::OnApply;
+    int saves = 0;
+    config.document.writeValues = [&](const std::filesystem::path&, const Values&) -> Status
+    {
+        ++saves;
+        return {};
+    };
+    config.document.valuesFile = "unused.json";
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& view = *editor.View();
+    auto& host = *view.Host();
+    WaitForConfiguration(host.Window());
+    auto& text = view.HeaderActions().Emplace<LWSUI::TextBox>("committed");
+    host.Update();
+    REQUIRE(host.Focus(&text));
+    Draft(text, "invalid");
+    text.SetValidation("Rejected");
+    REQUIRE(editor.Document().SetValue("name", std::string{"pending"}));
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true}));
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter, .control = true}));
+    REQUIRE(saves == 0);
+    REQUIRE(editor.Document().AppliedValue("name") == Value{std::string{"hello"}});
+    REQUIRE(text.Text() == "invalid");
+    text.SetValidation("");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter, .control = true}));
+    REQUIRE(editor.Document().AppliedValue("name") == Value{std::string{"pending"}});
 }
