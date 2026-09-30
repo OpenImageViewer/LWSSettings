@@ -47,8 +47,10 @@ namespace LWSSettings
         SettingsView* view_ = nullptr;
         std::string filter_;
         SettingValueFilter initialValueFilter_ = SettingValueFilter::All;
-        bool themePending_ = false;
+        bool themePending_ = false, minimumPending_ = false;
+        int32_t minimumWidth_ = 480;
         LWS::EventConnection listener_;
         LWSUI::Event<void(const std::string&)>::Connection errorConnection_;
+        LWSUI::Event<void(float)>::Connection minimumConnection_;
     };
 }  // namespace LWSSettings

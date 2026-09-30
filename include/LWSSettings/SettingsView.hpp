@@ -8,6 +8,7 @@ namespace LWSSettings
 {
     // Composes controls once per definition reload. Binding refresh is silent.
     // Description, search and default highlighting belong here, never in controls.
+    namespace internal { class SettingsHeader; struct SettingsHeaderState; }
     struct RowResetPresentation
     {
         std::string caption = "Reset";
@@ -25,9 +26,10 @@ namespace LWSSettings
         void SetFilter(std::string text);
         void SetValueFilter(SettingValueFilter filter);
         SettingValueFilter GetValueFilter() const { return valueFilter_; }
-        void SetIcon(LWS::BitmapSharedPtr icon) { icon_ = std::move(icon); Invalidate(true); }
+        void SetIcon(LWS::BitmapSharedPtr icon);
         void SetTheme(const SettingsTheme& theme);
-        LWSUI::StackPanel& HeaderActions() { return *headerActions_; }
+        // Throws std::logic_error if externally hosted header content has been removed.
+        LWSUI::StackPanel& HeaderActions();
         // Applies presentation to existing rows in one pass; reset behavior stays in the document.
         void SetRowResetPresentation(const std::function<RowResetPresentation(std::string_view)>& present);
         bool Finish(LWSUI::EditPhase phase) override;
@@ -49,6 +51,8 @@ namespace LWSSettings
         using LWSUI::Container::Clear;
 
 
+        friend class SettingsEditor;
+        void MoveHeaderTo(LWSUI::MenuBar& bar);
         struct Binding;
         void Rebuild();
         Binding* FindBinding(std::string_view id) const;
@@ -74,11 +78,10 @@ namespace LWSSettings
         std::array<LWSUI::Button*, 3> filterButtons_{};
         std::array<LWSUI::Button*, 2> groupButtons_{};
         LWSUI::Label* empty_ = nullptr;
-        LWS::BitmapSharedPtr icon_;
+        std::shared_ptr<internal::SettingsHeaderState> headerState_;
+        internal::SettingsHeader* ownedHeader_ = nullptr;
+        LWSUI::ControlHandle externalHeader_;
         LWSUI::Rect headerBounds_, searchBounds_, descriptionBounds_, footerBounds_;
-        LWSUI::StackPanel* headerActions_;
-        LWSUI::Label* title_;
-        LWSUI::Label* saved_;
         LWSUI::Label* descriptionTitle_;
         LWSUI::TextBox* search_;
         LWSUI::Button* clearSearch_;

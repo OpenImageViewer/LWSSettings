@@ -1,6 +1,8 @@
 #include <LWSSettings/SettingsView.hpp>
 #include <LWSUI/UIHost.hpp>
 #include "SettingsIcon.hpp"
+#include "SettingsHeader.hpp"
+#include <stdexcept>
 #include "SliderValueEditor.hpp"
 namespace LWSSettings
 {
@@ -201,17 +203,12 @@ namespace LWSSettings
                                bool collapseGroups)
         : document_(document), theme_(std::move(theme)), collapseGroups_(collapseGroups)
     {
-        icon_ = internal::DefaultSettingsIcon();
         SetStyle(theme_.base);
-        headerActions_ = &Emplace<LWSUI::StackPanel>();
-        headerActions_->orientation = LWSUI::Orientation::Horizontal;
-        headerActions_->SetStyle(theme_.header);
-        title_ = &Emplace<LWSUI::Label>(std::move(title));
-        title_->SetStyle(theme_.header);
-        title_->fontRole = FontRole::Title;
-        saved_ = &Emplace<LWSUI::Label>();
-        saved_->SetStyle(theme_.header);
-        saved_->fontRole = FontRole::Small;
+        headerState_ = std::make_shared<internal::SettingsHeaderState>();
+        headerState_->title = std::move(title);
+        headerState_->icon = internal::DefaultSettingsIcon();
+        headerState_->theme = theme_;
+        ownedHeader_ = &Emplace<internal::SettingsHeader>(headerState_);
         search_ = &Emplace<LWSUI::TextBox>();
         search_->SetStyle(theme_.search);
         StyleFilterButtons();
@@ -359,13 +356,35 @@ namespace LWSSettings
         Rebuild();
     }
     SettingsView::~SettingsView() = default;
+    void SettingsView::SetIcon(LWS::BitmapSharedPtr icon)
+    {
+        headerState_->icon = std::move(icon);
+        headerState_->changed.Raise();
+        Invalidate(true);
+    }
+    LWSUI::StackPanel& SettingsView::HeaderActions()
+    {
+        auto* header = ownedHeader_ ? ownedHeader_ : static_cast<internal::SettingsHeader*>(externalHeader_.Get());
+        if (!header) throw std::logic_error("Settings header content is no longer available");
+        return header->Actions();
+    }
+    void SettingsView::MoveHeaderTo(LWSUI::MenuBar& bar)
+    {
+        if (!ownedHeader_) throw std::logic_error("Settings header has already been moved");
+        auto header = Remove(*ownedHeader_);
+        ownedHeader_ = nullptr;
+        bar.SetContent(std::move(header));
+        auto* presenter = static_cast<internal::SettingsHeader*>(bar.Content());
+        presenter->UseMenuBar(bar);
+        externalHeader_ = presenter->Handle();
+        Invalidate(true);
+    }
     void SettingsView::SetTheme(const SettingsTheme& theme)
     {
         theme_ = theme;
         SetStyle(theme_.base);
-        title_->SetStyle(theme_.header);
-        saved_->SetStyle(theme_.header);
-        headerActions_->SetStyle(theme_.header);
+        headerState_->theme = theme_;
+        headerState_->changed.Raise();
         search_->SetStyle(theme_.search);
         clearSearch_->SetStyle(theme_.search);
         for (auto* button : groupButtons_) button->SetStyle(theme_.search);
@@ -464,8 +483,7 @@ namespace LWSSettings
     void SettingsView::UpdateStatus()
     {
         const bool dirty = document_.IsDirty();
-        saved_->SetText(dirty ? "Unsaved" : "Saved");
-        saved_->SetForeground(dirty ? theme_.header.accent : theme_.header.muted);
+        if (headerState_->dirty != dirty) { headerState_->dirty = dirty; headerState_->changed.Raise(); }
         status_->SetText(!validation_.empty()       ? validation_
                          : !operationError_.empty() ? operationError_
                                                     : information_);
@@ -878,7 +896,8 @@ namespace LWSSettings
     LWSUI::Size SettingsView::OnMeasure(LWSUI::Size available)
     {
         const auto& l = theme_.layout;
-        for (auto* c : std::array<LWSUI::Control*, 8>{title_, saved_, headerActions_, search_, clearSearch_, descriptionTitle_, status_, actions_})
+        if (ownedHeader_) ownedHeader_->Measure(available);
+        for (auto* c : std::array<LWSUI::Control*, 5>{search_, clearSearch_, descriptionTitle_, status_, actions_})
             c->Measure(available);
         for (auto* button : filterButtons_) button->Measure(available);
         for (auto* button : groupButtons_) button->Measure(available);
@@ -894,15 +913,7 @@ namespace LWSSettings
         auto b = Bounds();
         UpdateStatus();
         const float p = l.horizontalPadding, inner = std::max(0.f, b.width - 2 * p);
-        const float savedWidth = std::min(inner, std::max(l.actionWidth, theme_.header.smallFont.size * 8));
-        const float iconWidth = icon_ ? title_->DesiredSize().height + theme_.header.padding : 0;
-        const auto headerActions = headerActions_->DesiredSize();
-        const float headerGap = headerActions.width > 0 ? l.sectionGap : 0;
-        const float titleWidth = Host() ? Host()->MeasureText(title_->Text(), 10000, false, title_->Font()).width : 200.f;
-        const bool wrapHeader = headerActions.width > 0 && inner < titleWidth + iconWidth + savedWidth + headerActions.width + headerGap;
-        const float firstHeader = std::max(l.headerHeight, std::max(title_->DesiredSize().height,
-            wrapHeader ? 0.f : headerActions.height) + 2 * theme_.header.padding);
-        const float header = firstHeader + (wrapHeader ? headerActions.height + headerGap : 0);
+        const float header = ownedHeader_ ? ownedHeader_->DesiredSize().height : 0.f;
         const auto buttonWidth = [&](const auto& buttons)
         {
             float width = 0;
@@ -942,13 +953,7 @@ namespace LWSSettings
         searchBounds_ = {b.x, b.y + header, b.width, search + l.sectionGap};
         descriptionBounds_ = {b.x, descriptionTop, b.width, footerTop - descriptionTop};
         footerBounds_ = {b.x, footerTop, b.width, footer};
-        title_->Arrange({b.x + p + iconWidth - theme_.header.labelPadding, b.y + theme_.header.padding, std::max(0.f, inner - savedWidth - iconWidth - (wrapHeader ? 0.f : headerActions.width + headerGap)),
-                         title_->DesiredSize().height});
-        saved_->Arrange({b.x + b.width - p - savedWidth, b.y + (firstHeader - saved_->DesiredSize().height) / 2, savedWidth,
-                         saved_->DesiredSize().height});
-        headerActions_->Arrange({wrapHeader ? b.x + p : b.x + b.width - p - savedWidth - headerActions.width - headerGap,
-            wrapHeader ? b.y + firstHeader : b.y + (firstHeader - headerActions.height) / 2,
-            std::min(inner, headerActions.width), headerActions.height});
+        if (ownedHeader_) ownedHeader_->Arrange(headerBounds_);
         const float searchWidth = stacked ? inner : std::max(0.f, inner - controlsWidth - gap);
         const float clearWidth = clearSearch_->Visible() ? std::min(searchRow, searchWidth) : 0.f;
         // Reserve the trailing square so long queries cannot paint beneath the clear button.
@@ -993,12 +998,6 @@ namespace LWSSettings
         fill(footerBounds_, theme_.footer.background);
         canvas.Fill(descriptionBounds_.x, descriptionBounds_.y, descriptionBounds_.width,
                     theme_.description.borderWidth, theme_.description.line);
-        if (icon_)
-        {
-            const float side = title_->DesiredSize().height;
-            canvas.Image(icon_->GetBuffer(), headerBounds_.x + theme_.layout.horizontalPadding,
-                         headerBounds_.y + theme_.header.padding, side, side);
-        }
         Container::OnRender(canvas);
         if (!Host() || Host()->HasPopup()) return;
         size_t hint = groupButtons_.size();

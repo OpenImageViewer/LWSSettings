@@ -18,11 +18,15 @@
 static void Snapshot(LWSSettings::SettingsView& view, const std::filesystem::path& path = "snapshot.ppm")
 {
     LWSUI::Canvas canvas;
-    auto bounds = view.Bounds();
-    int width = int(bounds.width), height = int(bounds.height);
+    auto* host = view.Host();
+    if (!host) return;
+    host->Update();
+    const auto size = host->Window().GetClientAreaMetrics().logical;
+    int width = size.x, height = size.y;
     canvas.Begin(width, height);
     canvas.Fill(0, 0, float(width), float(height), view.Style().background);
     view.Render(canvas);
+    if (host->MainMenu()) host->MainMenu()->Render(canvas);
     auto pixels = canvas.End();
     std::ofstream output(path, std::ios::binary);
     output << "P6\n" << width << " " << height << "\n255\n";
@@ -93,15 +97,22 @@ int main(int argc, char** argv)
         return 0;
     }
     LWSSettings::ThemeSession themeSession(themeFile);
-    if (explicitTheme || std::filesystem::exists(themeFile) || std::filesystem::exists("theme-default.json"))
+    std::error_code themeError;
+    const bool themeExists = std::filesystem::exists(themeFile, themeError);
+    if (themeError)
+        std::cerr << "Theme warning: " << themeFile.string() << ": " << themeError.message()
+                  << "; using built-in defaults.\n";
+    else if (themeExists)
     {
-        auto loaded = themeSession.Load(explicitTheme ? std::filesystem::path{} : std::filesystem::path{"theme-default.json"});
+        auto loaded = themeSession.Load();
         if (loaded)
             config.theme = themeSession.Theme();
         else
             std::cerr << "Theme warning: " << loaded.error().location << ": " << loaded.error().message
                       << "; using built-in defaults.\n";
     }
+    else if (explicitTheme)
+        std::cerr << "Theme warning: " << themeFile.string() << ": file does not exist; using built-in defaults.\n";
     if (!exportTheme.empty())
     {
         auto result = LWSSettings::ThemeStorage::SaveFile(exportTheme, config.theme);
@@ -135,10 +146,14 @@ int main(int argc, char** argv)
     };
     if (!report(LWSSettings::SettingsStorage::LoadTemplateFile(page, "settings.json")))
         return 2;
-    const auto initialValues = std::filesystem::exists(config.document.valuesFile)
-                                   ? config.document.valuesFile
-                                   : std::filesystem::path("showcase-values.json");
-    if (!report(LWSSettings::SettingsStorage::LoadValuesFile(page, initialValues)))
+    std::error_code valuesError;
+    const bool valuesExist = std::filesystem::exists(config.document.valuesFile, valuesError);
+    if (valuesError)
+    {
+        std::cerr << config.document.valuesFile.string() << ": " << valuesError.message() << '\n';
+        return 3;
+    }
+    if (valuesExist && !report(LWSSettings::SettingsStorage::LoadValuesFile(page, config.document.valuesFile)))
         return 3;
     std::cout << "LWSSettings: live settings events (preview / commit / cancel) are printed below." << std::endl;
     auto subscription = page.OnChange.Connect([](const LWSSettings::Change& change)
@@ -169,7 +184,7 @@ int main(int argc, char** argv)
             if (!themeEditor)
             {
                 auto candidate = std::make_unique<LWSSettings::ThemeEditor>(platform, themeSession, config.iconPath);
-                auto loaded = candidate->Load("theme-settings.json");
+                auto loaded = candidate->Load();
                 if (report(loaded))
                 {
                     themeErrors = candidate->OnError.Connect(

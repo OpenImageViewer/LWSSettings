@@ -31,23 +31,45 @@ Run `LWSSettingsDemo` from its output directory. `--staged` selects OnApply;
 run. `--snapshot` also renders the current view to `snapshot.ppm` for visual QA.
 Run from the generated `oiv` directory to use the OIViewer profile.
 
-The showcase loads the sparse writable `theme.json` profile when present, otherwise
-the shipped `theme-default.json`. The bundled defaults are just `{"version": 1}`;
-when neither file exists it uses built-in defaults. `--theme <path>` selects another file; `--export-theme <path>`
-exports the complete resolved theme and exits without opening a window. Invalid
-files produce a console warning and fall back to defaults. See [Themes](docs/themes.md)
-for fonts, colors, search highlights, section styles, and layout customization.
+When Python is available at configuration time, CTest also registers
+LWSSettingsDemoStartup, which launches isolated settings-only profiles and checks
+optional overrides, failure handling, and the built-in theme editor.
 
-Press **F6** or launch with `--edit-theme` to open the template-driven live theme
-editor. Its own style stays fixed while changes preview in the showcase. Each
-property occupies one row: editing creates an override, and Use inherited removes
-it. Inherited rows show a disabled Inherited indicator. Save writes only explicit
-overrides, Revert restores the loaded/saved baseline, and closing without saving
-reverts the preview. `theme-settings.json` is loaded only on first F6 (or explicit
-`--edit-theme` startup); reopening reuses the editor. It is bundled beside both
-showcase profiles. Generate
-it from the shared catalog with `--export-theme-template <path>`. With both
-`--edit-theme --snapshot`, the demo also writes `theme-editor.ppm`.
+`settings.json` is the only required data file. Its template supplies initial values.
+If `user-settings.json` exists, the demo loads it over those defaults; otherwise it
+starts from the template alone. Save writes all applied setting values, including
+unchanged defaults, to `user-settings.json`. Starting the demo does not create it.
+An invalid saved-values file is reported as an error rather than silently ignored.
+
+The optional `theme.json` profile customizes the built-in theme. If it is absent,
+the demo uses built-in defaults; `--theme <path>` selects a different optional profile.
+Invalid themes and explicitly missing paths produce a warning and use defaults.
+`--export-theme <path>` exports the resolved theme without opening a window. The
+legacy `showcase-values.json` and `theme-default.json` files are not read or shipped.
+See [Themes](docs/themes.md) for colors, fonts, search highlights, and section styles.
+
+Press **F6** or launch with `--edit-theme` to open the live theme editor. Its editing
+definitions come from the built-in catalog, so no `theme-settings.json` is needed.
+Its own style stays fixed while changes preview in the showcase. Editing a property
+creates an override; Use inherited removes it. Save writes the theme profile,
+Revert restores its baseline, and closing without saving reverts the preview.
+Reopening reuses the editor. `--export-theme-template <path>` remains available for
+explicit template exports. `--edit-theme --snapshot` also writes `theme-editor.ppm`.
+
+Settings and theme-editor windows merge their header into the captionless menu bar:
+cog icon, compact title, theme selector, Saved/Unsaved, Minimize, and Close. The
+menu-item list stays empty, and search/filter controls start directly below this
+single row. The icon, title, Saved/Unsaved text, and unoccupied gaps move the window
+through LWS; menu items, interactive controls (including disabled ones), and window
+buttons do not. Close retains validation/hide/revert behavior. Minimize is disabled
+on Wayland. The title shortens first at narrow widths; required controls determine
+the minimum window width. No additional guaranteed drag strip is imposed yet.
+
+Standalone `SettingsView` retains its embedded header. `HeaderActions()` continues
+to return the real action panel even when the header is hosted in a menu bar; it
+throws `std::logic_error` if that content has been removed externally. `SetIcon()`
+updates the embedded icon or menu-bar icon as appropriate. Presentation state is
+shared separately from controls, and references to relocated controls are checked.
 
 The compact double-down and double-up chevrons expand or collapse every nonempty
 group, including nested groups. Pointer hover shows “Expand all” or “Collapse all”.
@@ -364,9 +386,11 @@ Each time F6 opens a hidden editor, it copies the current main appearance and ho
 style until closed. Previews affect the main window. Closing F6 reverts unsaved changes.
 A field's reset inherits from the selected preset, including inherited base overrides.
 
-SettingsView::HeaderActions() is an optional horizontal container for controls with
-natural desired widths. It wraps below the title on narrow windows; an empty container
-preserves the existing layout. Theme controls reuse the ordinary LWSUI context menu.
+SettingsView::HeaderActions() is an optional horizontal container. In SettingsEditor,
+it shares the compact menu-bar row with the title and status; the title truncates first
+and the window minimum width protects the actions. A standalone SettingsView retains
+its embedded header and wraps actions below the title on narrow views. Theme controls
+reuse the ordinary LWSUI context menu.
 
 Non-default setting names use bold weight (at least 700). Dark uses amber gold
 `#FBBF24` for the name and displayed value; Light and Warm retain normal text colors.
@@ -374,10 +398,9 @@ Value controls keep their configured font weights. This indicates a difference f
 the default, including saved values. Reset removes the emphasis. Explicit `changed`
 color overrides remain supported, and custom name weights above 700 remain intact.
 
-The demo ships generated `theme-default.json` separately from writable `theme.json`.
-On a first run, the defaults establish the saved baseline; subsequent saves target
-`theme.json`, which takes precedence and is never overwritten by CMake regeneration.
-An explicit `--theme` path continues to select its own writable profile.
+When no theme profile exists, the built-in preset establishes the baseline without
+creating a file. Theme Save writes the optional `theme.json`, or the explicit
+`--theme` path. CMake never generates or overwrites these user-owned profiles.
 
 ThemeProfile.hpp contains public sparse-profile types without JSON dependencies.
 ThemeSession and theme-editor headers do not include the codec. ThemeStorage.hpp uses

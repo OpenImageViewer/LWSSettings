@@ -237,3 +237,61 @@ confined to `Include/LLUtils/Event.h`; the unrelated `EnumClassBitwise.h` edits
 were preserved. No commits, repository resets or history rewrites were made.
 New and modified source files use CRLF. Whitespace checks pass for authored
 changes; existing whitespace in the unrelated LLUtils file was left untouched.
+
+## Single-template startup and captionless editors, 2026-09-29
+
+The demo now requires only settings.json. Saved values and optional theme profiles
+are loaded when present; no showcase-values.json, theme-default.json, or external
+theme-settings.json is used at startup or when opening the live theme editor.
+Full applied-value snapshots and the existing manual/autosave/staged policies are
+preserved. SettingsEditor uses a captionless resize border and an empty draggable
+Minimize/Close menu bar. Close still respects validation and revert-on-close.
+
+Windows and Wayland each passed 46 settings cases. Isolated executable checks passed
+17 scenarios on Windows (including F6) and 16 on Wayland: settings-only startup,
+no startup writes, built-in theme-editor creation, ignored malformed legacy files,
+saved values, invalid/missing templates, invalid saved values, OIViewer defaults,
+optional/explicit/missing/malformed themes, and export commands. The new caption
+case checks native styles, menu configuration, validation-blocked close, hide/reopen,
+and retained menu identity after a theme update.
+
+Default settings and theme-editor snapshots were inspected on Windows. Snapshots
+now include the entire client area and custom menu bar. Twelve obsolete generated
+asset copies were removed only after matching their source-file hashes; existing
+user-settings.json and theme.json files were preserved. Historical verification
+records above describe their original packaging and are not current requirements.
+
+## Compact menu-bar headers, 2026-09-30
+
+SettingsEditor now hosts the settings header inside the generic LWSUI menu-bar
+content slot. Icon, menu items, header content, and window buttons retain that
+order; settings editors have no menu items. The standalone SettingsView keeps its
+embedded header. Only unoccupied gaps initiate native dragging. The decision to
+reserve a guaranteed drag strip remains a TODO.
+
+Windows release passed all 47 settings cases (4620 assertions) and 133 LWS cases
+(2509 assertions). Wayland release passed all 47 settings cases (5210 assertions)
+and 104 LWS cases (2545 assertions). The isolated demo startup checks passed all
+17 Windows and 16 Wayland scenarios, including the Windows F6 editor shortcut.
+
+Focused coverage exercises icon/menu/content ordering, action clicks, disabled and
+passive occupied regions, blank-gap native dragging, capture cancellation, Tab and
+context menus, minimum-width resizing, relocated header identity, replacement
+invalidation, standalone layout, theme-selector interaction, and window recreation.
+Wayland ASan/UBSan runs passed the header case (47 assertions) and content case
+(32 assertions), with leak detection disabled. Windows settings and theme-editor
+snapshots were visually checked for the single-row header and adjacent search row.
+Both repositories pass whitespace checks; modified text files retain CRLF endings.
+
+### Passive header drag regions, 2026-09-30
+
+The follow-up extends native window dragging to the menu-bar icon and compact
+settings title and Saved/Unsaved text. Interactive and disabled controls, menu
+items, and window buttons remain excluded. Generic labels and standalone settings
+headers retain their existing hit-testing behavior. No native backend changes or
+new public API were needed; the guaranteed empty drag-strip TODO remains deferred.
+
+Windows regression tests intercept the native caption-move request to verify
+icon/title/status dragging without moving the test windows. Portable checks cover
+hit testing and disabled dragging, including vertical bars. The full Windows and
+Wayland settings and LWS suites passed after this change.

@@ -1,19 +1,23 @@
 # Themes and search highlights
 
-The showcase reads the sparse writable `theme.json` profile when present, otherwise
-the shipped `theme-default.json`, and applies its fields over the selected preset.
-The bundled defaults are `{"version": 1}`; no complete JSON theme is constructed as a
-startup intermediate. The separate `theme-settings.json` editor template is loaded
-only on first F6, or when explicitly requested with `--edit-theme`. Reopening the
-editor reuses it. Normal startup does not require that template file. CMake places
-it beside the executable and in the generated `oiv` directory. External file edits
-still require a restart; there is no file watcher. F6 opens the live editor described
-below. Native title bars and file dialogs keep operating-system styling.
+The showcase reads the optional `theme.json` profile when present and applies its
+fields over the selected built-in preset. Without a profile it uses built-in theme
+defaults; it does not read a `theme-default.json` fallback or write a startup file.
+The live editor builds its definitions directly from the shared field catalog,
+including on first F6 or `--edit-theme`. No `theme-settings.json` is required.
+Reopening reuses the editor. External profile edits require a restart; there is no
+file watcher. Editor windows combine their icon, title, theme selector, and status with
+Minimize/Close in one compact bar instead of a native caption and separate header. Native file dialogs retain operating-system styling.
 
 Run `LWSSettingsDemo --theme other.json` to select a theme. Run
 `LWSSettingsDemo --export-theme exported.json` to export the resolved theme without
 opening a window. No implicit theme file means built-in defaults; malformed or
 explicitly missing files print a warning and use those defaults in the demo.
+
+The compact bar uses header colors and fits header fonts into the menu-bar height.
+Its title uses the regular header font; the larger title font remains available to
+standalone SettingsView headers. Title truncation preserves the original title,
+and Saved/Unsaved reserve the same width to keep neighboring controls stable.
 
 ## Live editor
 
@@ -41,15 +45,16 @@ loaded or successfully saved theme. **Reset all** clears overrides and previews
 built-in defaults; it does not save. Closing the editor reverts outstanding edits.
 The Use inherited row action returns that property to inheritance.
 
-The bundled `theme-settings.json` uses the normal version-1 settings template schema.
-Its metadata, bounds and defaults come from the private `ThemeFields` catalog, also used
-for loading and validating themes. Regenerate it after catalog changes:
+The editor's metadata, bounds, and defaults come from the private `ThemeFields`
+catalog, also used for loading and validating themes. An optional exported template
+uses the normal version-1 settings schema. Export it for inspection or explicit
+library use with `ThemeEditor::Load(path)`:
 
 ```text
 LWSSettingsDemo --export-theme-template <source-directory>/examples/theme-settings.json
 ```
 
-The runtime template contains one setting per catalog path, with matching types,
+The generated definitions contain one setting per catalog path, with matching types,
 defaults, bounds and steps. Override flags are private document state and are not
 in the template or control tree.
 Labels and descriptions can be customized. The build output contains generated demo
@@ -178,7 +183,6 @@ Default popup dimensions are 720 × 600 logical pixels. Existing popup metrics
 control layout, with stacking and scrolling in smaller windows. Explicit theme
 overrides remain authoritative; old exported template size defaults migrate.
 
-The demo ships generated `theme-default.json` separately from writable `theme.json`.
-On a first run, the defaults establish the saved baseline; subsequent saves target
-`theme.json`, which takes precedence and is never overwritten by CMake regeneration.
-An explicit `--theme` path continues to select its own writable profile.
+When no theme profile exists, the built-in preset establishes the baseline without
+creating a file. Theme Save writes the optional `theme.json`, or the explicit
+`--theme` path. CMake never generates or overwrites these user-owned profiles.

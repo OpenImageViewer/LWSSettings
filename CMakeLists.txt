@@ -34,7 +34,7 @@ endif()
 # Keep one consumable settings target until a headless consumer needs a core target.
 # Splitting document/storage from UI would otherwise add packaging/dependency policy
 # without a current consumer benefit; the source boundaries already permit that split.
-add_library(LWSSettings STATIC src/SettingsDocument.cpp src/SettingsStorage.cpp src/SettingsView.cpp src/SettingsEditor.cpp src/ThemeStorage.cpp src/ThemeFields.cpp src/ThemeEditor.cpp src/ThemeSession.cpp src/ThemeSelector.cpp src/SettingsIcon.cpp)
+add_library(LWSSettings STATIC src/SettingsDocument.cpp src/SettingsStorage.cpp src/SettingsView.cpp src/SettingsHeader.cpp src/SettingsEditor.cpp src/ThemeStorage.cpp src/ThemeFields.cpp src/ThemeEditor.cpp src/ThemeSession.cpp src/ThemeSelector.cpp src/SettingsIcon.cpp)
 add_library(LWSSettings::LWSSettings ALIAS LWSSettings)
 target_compile_features(LWSSettings PUBLIC cxx_std_26)
 target_include_directories(LWSSettings PUBLIC include PRIVATE src)
@@ -49,26 +49,12 @@ if(LWSSETTINGS_BUILD_DEMO)
     target_link_libraries(LWSSettingsDemo PRIVATE LWSSettings)
     # Launching from the executable directory must work with custom runtime output
     # paths and multi-config generators, not just from the top-level build folder.
-    foreach(asset settings.json showcase-values.json theme-settings.json)
-        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/${asset}"
-            INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/${asset}"
-            TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
-    endforeach()
-    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/oiv/theme-settings.json"
-        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/theme-settings.json"
-        TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
-    # Never generate writable theme.json; preserve saved customization on regeneration.
-    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/theme-default.json"
-        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/theme.json"
-        TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
-    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/oiv/theme-default.json"
-        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/theme.json"
+    # Settings defaults live in the template. Saved values and theme overrides are user-owned.
+    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/settings.json"
+        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/settings.json"
         TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
     file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/oiv/settings.json"
         INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/oiv/settings.json"
-        TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
-    file(GENERATE OUTPUT "$<TARGET_FILE_DIR:LWSSettingsDemo>/oiv/showcase-values.json"
-        INPUT "${CMAKE_CURRENT_SOURCE_DIR}/examples/oiv/values.json"
         TARGET LWSSettingsDemo NEWLINE_STYLE CRLF)
 endif()
 if(LWSSETTINGS_BUILD_TESTS)
@@ -86,4 +72,14 @@ if(LWSSETTINGS_BUILD_TESTS)
     list(APPEND CMAKE_MODULE_PATH "${_catch_source}/../extras")
     include(Catch)
     catch_discover_tests(LWSSettingsTests)
+    if(LWSSETTINGS_BUILD_DEMO)
+        find_package(Python3 COMPONENTS Interpreter QUIET)
+        if(Python3_Interpreter_FOUND)
+            add_test(NAME LWSSettingsDemoStartup COMMAND "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/demo_startup.py"
+                "$<TARGET_FILE:LWSSettingsDemo>" "${CMAKE_CURRENT_SOURCE_DIR}/examples"
+                "${CMAKE_CURRENT_BINARY_DIR}/demo-startup-tests")
+            set_tests_properties(LWSSettingsDemoStartup PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE)
+        endif()
+    endif()
 endif()

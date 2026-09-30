@@ -11,6 +11,7 @@
 #ifdef LWS_HAS_WIN32_BACKEND
 #include <LWS/Win32/Platform.hpp>
 #include <LWS/Win32/WindowExtensions.hpp>
+#include <commctrl.h>
 #endif
 #include <LWS/TextClipboard.hpp>
 #include <catch2/catch_approx.hpp>
@@ -234,7 +235,7 @@ TEST_CASE("Templates create typed defaults without a platform session")
     REQUIRE(ThemeStorage::SaveOverridesFile(liveFile.path, {}));
     ThemeEditor live(platform, liveFile.path);
     REQUIRE(internal::ThemeEditorTestAccess::Editor(live).Document().Definitions().empty());  // Editor definitions are lazy.
-    REQUIRE(live.Load(std::filesystem::path(LWSSETTINGS_EXAMPLES_DIR) / "theme-settings.json"));
+    REQUIRE(live.Load());
     REQUIRE(internal::ThemeEditorTestAccess::Editor(live).Document().WorkingValues().size() == ThemeFields::All().size() * 2 + 1);
     auto oldTemplate = ThemeStorage::Template();
     auto removeField = [&](auto&& self, Json& nodes, std::string_view suffix) -> void
@@ -584,6 +585,9 @@ TEST_CASE("Manual persistence round trips Unicode and uses CRLF")
     std::ifstream input(file.path, std::ios::binary);
     std::string bytes((std::istreambuf_iterator<char>(input)), {});
     REQUIRE(bytes.find("\r\n") != std::string::npos);
+    const auto savedJson = Json::parse(bytes);
+    REQUIRE(savedJson["values"].size() == p.WorkingValues().size());
+    REQUIRE(savedJson["values"]["count"] == 3); // Unchanged defaults remain in the saved snapshot.
     input.close();
     SettingsDocument other;
     REQUIRE(SettingsStorage::LoadTemplate(other, Template()));
@@ -1247,14 +1251,19 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
         REQUIRE(internal::ThemeEditorTestAccess::Editor(shared).Document().IsDirty());
         REQUIRE(shared.Overrides()->empty());
         REQUIRE(themeHost->Style().background == LWSUI::MakeTheme(Preset::Warm).background);
-        auto* selector = FindButton(*internal::ThemeEditorTestAccess::Editor(shared).View(), "Theme: Light *");
+        auto* selector = FindButton(internal::ThemeEditorTestAccess::Editor(shared).View()->HeaderActions(), "Theme: Light *");
         REQUIRE(selector);
-        internal::ThemeEditorTestAccess::Editor(shared).View()->Measure({480,680});
-        internal::ThemeEditorTestAccess::Editor(shared).View()->Arrange({0,0,480,680});
-        REQUIRE(selector->Bounds().x >= 0);
-        REQUIRE(selector->Bounds().x + selector->Bounds().width <= 480);
-        for (auto* label : Controls<LWSUI::Label>(*internal::ThemeEditorTestAccess::Editor(shared).View()))
-            if (label->Text() == "Theme editor") REQUIRE(selector->Bounds().y >= label->Bounds().y + label->Bounds().height);
+        auto* themeBar = themeHost->MainMenu();
+        const float compactWidth = std::max(480.f, themeBar->MinimumWidth());
+        const auto originalBounds = themeBar->Bounds();
+        themeBar->Measure({compactWidth, originalBounds.height});
+        themeBar->Arrange({0, 0, compactWidth, originalBounds.height});
+        REQUIRE(selector->Bounds().width > 0);
+        REQUIRE(selector->Bounds().x >= themeBar->Content()->Bounds().x);
+        REQUIRE(selector->Bounds().x + selector->Bounds().width <=
+                themeBar->Content()->Bounds().x + themeBar->Content()->Bounds().width);
+        REQUIRE(selector->Bounds().y == themeBar->Bounds().y);
+        themeBar->Arrange(originalBounds);
         KeyPress(*selector, Key::Enter);
         REQUIRE(themeHost->HasContextMenu());
         Input pick{Kind::KeyDown}; pick.key=Key::Home; themeHost->Route(pick);
@@ -3477,4 +3486,147 @@ TEST_CASE("Label measurement reuse follows content style and host changes", "[re
     otherHost.SetRoot(std::move(detached)); otherHost.Update();
     verify(label, 90);
     label.wrap = true; verify(label, 75);
+}
+
+TEST_CASE("Settings windows use only minimize and close without a native caption", "[viewer][window-controls]")
+{
+    TestPlatform platform;
+    SettingsEditor editor(platform);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto* host = editor.View()->Host();
+    WaitForConfiguration(host->Window());
+    host->Update();
+    auto* bar = host->MainMenu();
+    REQUIRE(bar != nullptr);
+    REQUIRE(bar->Items().empty());
+    REQUIRE(bar->WindowControls().minimize);
+    REQUIRE_FALSE(bar->WindowControls().maximize);
+    REQUIRE(bar->WindowControls().draggable);
+    REQUIRE(bool(bar->WindowControls().requestClose));
+    REQUIRE(host->Window().GetWindowStyles() == LWS::WindowStyle::ResizableBorder);
+    REQUIRE(editor.View()->Bounds().y >= bar->Bounds().y + bar->Bounds().height);
+#ifdef LWS_HAS_WIN32_BACKEND
+    const auto hwnd = *LWS::Win32::GetHwnd(host->Window());
+    REQUIRE((GetWindowLongW(hwnd, GWL_STYLE) & WS_CAPTION) == 0);
+    REQUIRE((GetWindowLongW(hwnd, GWL_STYLE) & WS_THICKFRAME) != 0);
+#endif
+    unsigned hidden = 0;
+    auto connection = editor.OnHidden.Connect([&] { ++hidden; });
+    const auto close = [&]
+    {
+        REQUIRE(host->Route({.kind = LWSUI::InputKind::KeyDown, .key = LWS::KeyCode::F10}));
+        REQUIRE(host->Route({.kind = LWSUI::InputKind::KeyDown, .key = LWS::KeyCode::Left}));
+        REQUIRE(host->Route({.kind = LWSUI::InputKind::KeyDown, .key = LWS::KeyCode::Enter}));
+        PumpFor(platform.value, 30);
+    };
+    auto* text = FindControl<LWSUI::TextBox>(*editor.View());
+    REQUIRE(text != nullptr);
+    REQUIRE(host->Focus(text));
+    Draft(*text, "draft");
+    text->SetValidation("Invalid draft");
+    close();
+    REQUIRE(editor.IsVisible());
+    REQUIRE(hidden == 0);
+    text->SetValidation("");
+    KeyPress(*text, LWS::KeyCode::Escape);
+    close();
+    REQUIRE_FALSE(editor.IsVisible());
+    REQUIRE(hidden == 1);
+    REQUIRE(editor.Show());
+    REQUIRE(editor.View()->Host()->MainMenu() == bar);
+    REQUIRE(editor.SetTheme(SettingsTheme(LWSUI::ThemePreset::Light)));
+    host->Update();
+    REQUIRE(host->MainMenu() == bar);
+    REQUIRE(host->MainMenu()->Items().empty());
+    close();
+    REQUIRE(hidden == 2);
+}
+
+TEST_CASE("Settings headers move into the bar without dangling controls", "[viewer][header]")
+{
+    TestPlatform platform;
+    EditorConfig config; config.size = {480, 680};
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto* view = editor.View();
+    auto* host = view->Host();
+    WaitForConfiguration(host->Window()); host->Update();
+    auto* bar = host->MainMenu();
+    REQUIRE(bar->Icon() != nullptr);
+    REQUIRE(bar->Content() != nullptr);
+    REQUIRE(view->HeaderActions().Parent() == bar->Content());
+    REQUIRE(view->HeaderActions().Host() == host);
+    auto* search = FindControl<LWSUI::TextBox>(*view);
+    REQUIRE(search != nullptr);
+    REQUIRE(search->Bounds().y == Catch::Approx(view->Bounds().y));
+    SettingsView standalone(editor.Document()); Layout(standalone);
+    REQUIRE(FindControl<LWSUI::TextBox>(standalone)->Bounds().y > 0);
+    for (auto* label : Controls<LWSUI::Label>(standalone))
+        if (label->Text() == "Settings")
+        {
+            const auto b = label->Bounds();
+            REQUIRE(standalone.HitTest(b.x + 1, b.y + 1) == label);
+        }
+    const auto passiveLabels = Controls<LWSUI::Label>(*bar->Content());
+    REQUIRE(passiveLabels.size() == 2);
+    for (auto* label : passiveLabels)
+    {
+        const auto b = label->Bounds();
+        REQUIRE(b.width > 0);
+        REQUIRE(bar->Content()->HitTest(b.x + 1, b.y + 1) == nullptr);
+    }
+#ifdef LWS_HAS_WIN32_BACKEND
+    unsigned moves = 0;
+    const SUBCLASSPROC observer = [](HWND h, UINT message, WPARAM w, LPARAM l, UINT_PTR, DWORD_PTR data) -> LRESULT
+    {
+        if (message == WM_NCLBUTTONDOWN && w == HTCAPTION) { ++*reinterpret_cast<unsigned*>(data); return 0; }
+        return DefSubclassProc(h, message, w, l);
+    };
+    const auto hwnd = *LWS::Win32::GetHwnd(host->Window());
+    REQUIRE(SetWindowSubclass(hwnd, observer, 9, reinterpret_cast<DWORD_PTR>(&moves)));
+    POINT cursor{}; const bool pointer = GetCursorPos(&cursor) != FALSE;
+    for (auto* label : passiveLabels)
+    {
+        const auto b = label->Bounds();
+        const auto before = moves;
+        REQUIRE(host->Route({.kind = LWSUI::InputKind::Down, .x = b.x + 1, .y = b.y + 1}));
+        REQUIRE(host->Route({.kind = LWSUI::InputKind::Up, .x = b.x + 1, .y = b.y + 1}));
+        if (pointer) REQUIRE(moves == before + 1);
+    }
+    REQUIRE(RemoveWindowSubclass(hwnd, observer, 9));
+#endif
+    auto& action = view->HeaderActions().Emplace<LWSUI::Button>(std::string(35, 'W'));
+    unsigned clicks = 0;
+    auto click = action.OnClick.Connect([&] { ++clicks; });
+    host->Update(); PumpFor(platform.value, 30); host->Update();
+    REQUIRE(host->Window().GetClientSizeLimits().minimum.x >= int(bar->MinimumWidth()));
+    REQUIRE(host->Window().GetClientAreaMetrics().logical.x >= int(bar->MinimumWidth()));
+    ClickButton(action); REQUIRE(clicks == 1);
+    const auto handle = action.Handle();
+    REQUIRE(editor.SetTheme(SettingsTheme(LWSUI::ThemePreset::Light)));
+    host->Update();
+    REQUIRE(handle);
+    REQUIRE(editor.Hide()); REQUIRE(editor.Show());
+    REQUIRE(handle);
+    REQUIRE(editor.Document().SetValue("enabled", true));
+    host->Update();
+    bool unsaved = false;
+    for (auto* label : Controls<LWSUI::Label>(*bar->Content())) unsaved |= label->Text() == "Unsaved";
+    REQUIRE(unsaved);
+    const auto icon = bar->Icon();
+    view->SetIcon(nullptr); host->Update(); REQUIRE_FALSE(bar->Icon());
+    view->SetIcon(icon); host->Update(); REQUIRE(bar->Icon() == icon);
+    bar->SetContent(nullptr);
+    REQUIRE_FALSE(handle);
+    REQUIRE_THROWS_AS(view->HeaderActions(), std::logic_error);
+    REQUIRE(editor.Document().SetValue("enabled", false));
+    REQUIRE(editor.SetTheme(SettingsTheme(LWSUI::ThemePreset::Warm))); host->Update();
+    REQUIRE(editor.Hide());
+    REQUIRE(host->Window().Destroy() == LWS::Result::Success);
+    REQUIRE(editor.Show());
+    WaitForConfiguration(editor.View()->Host()->Window()); editor.View()->Host()->Update();
+    REQUIRE(editor.View()->Host()->MainMenu()->Content() != nullptr);
+    REQUIRE(editor.View()->HeaderActions().Parent() == editor.View()->Host()->MainMenu()->Content());
 }

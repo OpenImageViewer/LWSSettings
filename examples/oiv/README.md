@@ -12,7 +12,7 @@ The supplied template's Display settings and Files groups are absent from that f
 
 Defaults remain separate from current values: `system/allowdynamicsettings` defaults to false but is currently
 true; `filesystem/deletedfileremovalmode` defaults to internally but is currently externally. These two settings
-therefore appear in the non-default color.
+appear as non-default when that optional values snapshot is explicitly loaded. The demo starts from template defaults.
 
 Numeric editors follow the current `OIVAppCore/Source/Src/AppSettingsPolicy.cpp`: `minimagesize` is a number,
 while `speedfactorrange` is an integer. Integral fields written as whole-valued floats in the source file
@@ -20,18 +20,20 @@ while `speedfactorrange` is an integer. Integral fields written as whole-valued 
 
 ## Preview
 
-CMake places the profile in an `oiv` directory beside the demo executable, naming the current-value snapshot
-`showcase-values.json` for the existing demo loader. Run the demo with that directory as its working directory.
+CMake places only `settings.json` in an `oiv` directory beside the demo executable.
+Run the demo with that directory as its working directory. It loads template defaults
+unless that directory already contains a saved `user-settings.json`; `values.json`
+remains an explicit integration example and is not packaged as a startup fallback.
 
 For the current Windows build:
 
 ```powershell
-cd D:\dev\LWSSettings\build-release\oiv
+cd D:\dev\LWSSettings\build\windows-release\oiv
 ..\LWSSettingsDemo.exe
 ```
 
 Add `--staged` for OnApply and `--autosave` for OnCommit; combine them to save after Apply. Saved edits go to `user-settings.json` in the
-profile directory. Existing saved edits take precedence over the supplied snapshot.
+profile directory as a full snapshot of applied values. Existing saved edits take precedence over template defaults.
 
 ## Application integration
 

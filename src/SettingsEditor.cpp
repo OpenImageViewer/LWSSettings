@@ -2,6 +2,7 @@
 #include <LWS/Platform.hpp>
 #include "ThemeFields.hpp"
 #include "SettingsIcon.hpp"
+#include <cmath>
 namespace LWSSettings
 {
     SettingsEditor::SettingsEditor(LWS::PlatformContext& platform, EditorConfig config)
@@ -19,6 +20,8 @@ namespace LWSSettings
             if (window_ && (!window_->IsCreated() || !host_ || !view_))
             {
                 errorConnection_ = {};
+                minimumConnection_ = {};
+                minimumPending_ = false;
                 host_.reset();
                 listener_ = {};
                 window_.reset();
@@ -32,9 +35,9 @@ namespace LWSSettings
                 wc.title = LWSUI::NativeText(config_.title);
                 wc.clientSize = config_.size;
                 wc.clientSizeLimits.minimum = {480, 440};
-                wc.styles = LWS::WindowStyle::Caption | LWS::WindowStyle::CloseButton |
-                            LWS::WindowStyle::ResizableBorder;
+                wc.styles = LWS::WindowStyle::ResizableBorder;
                 wc.eraseBackground = false;
+                wc.backgroundColor = config_.theme.base.background;
                 if (window->Create(wc) != LWS::Result::Success)
                     return std::unexpected(Error{"window", "Cannot create settings window"});
                 auto loadedIcon = internal::LoadSettingsIcon(config_.iconPath);
@@ -59,12 +62,35 @@ namespace LWSSettings
                 listener_ = std::move(*listener);
                 host_ = std::make_unique<LWSUI::UIHost>(*window_, config_.theme.base);
                 host_->SetPopupStyle(config_.theme.popups);
+                auto bar = std::make_unique<LWSUI::MenuBar>();
+                bar->SetWindowControls({.minimize = true, .draggable = true, .requestClose = [this] { Hide(); }});
+                host_->SetMainMenu(std::move(bar));
                 auto view = std::make_unique<SettingsView>(document_, config_.title, config_.theme, config_.showRevert,
                                                            config_.collapseGroups);
                 auto* createdView = view.get();
                 view->SetIcon(icon);
                 host_->SetRoot(std::move(view));
                 view_ = createdView;
+                view_->MoveHeaderTo(*host_->MainMenu());
+                minimumConnection_ = host_->MainMenu()->OnMinimumWidthChanged.Connect(
+                    [this, handle = host_->MainMenu()->Handle()](float width)
+                    {
+                        minimumWidth_ = std::max(480, int32_t(std::ceil(width)));
+                        if (minimumPending_) return;
+                        minimumPending_ = true;
+                        host_->Post(handle, [this](LWSUI::Control&)
+                        {
+                            minimumPending_ = false;
+                            if (!window_ || !window_->IsCreated()) return;
+                            auto limits = window_->GetClientSizeLimits();
+                            auto result = LWS::Result::Success;
+                            if (limits.minimum.x != minimumWidth_) { limits.minimum.x = minimumWidth_; result = window_->SetClientSizeLimits(limits); }
+                            const auto size = window_->GetClientAreaMetrics().logical;
+                            if (result == LWS::Result::Success && size.x < minimumWidth_)
+                                result = window_->RequestPlacement({.clientSize = LWS::LogicalSize{minimumWidth_, std::max(440, size.y)}});
+                            if (result != LWS::Result::Success) document_.OnError.Raise({"window", "Cannot apply header minimum width"});
+                        });
+                    });
                 view_->SetFilter(filter_);
                 view_->SetValueFilter(initialValueFilter_);
                 errorConnection_ = host_->OnError.Connect(
