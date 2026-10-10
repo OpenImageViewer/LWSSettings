@@ -2,10 +2,37 @@
 #include <LWSUI/UIHost.hpp>
 #include "SettingsIcon.hpp"
 #include "SettingsHeader.hpp"
+#include <memory>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 namespace LWSSettings
 {
+    namespace
+    {
+        class ConnectionSet
+        {
+          public:
+
+            ConnectionSet() = default;
+            ConnectionSet(const ConnectionSet&) = delete;
+            ConnectionSet& operator=(const ConnectionSet&) = delete;
+            ConnectionSet(ConnectionSet&&) noexcept = default;
+            ConnectionSet& operator=(ConnectionSet&&) noexcept = default;
+
+            template <class E, class F>
+            void Connect(E& event, F callback)
+            {
+                connections_.push_back(std::make_shared<typename E::Connection>(event.Connect(std::move(callback))));
+            }
+            void Clear() { connections_.clear(); }
+
+          private:
+
+            std::vector<std::shared_ptr<void>> connections_;
+        };
+    }  // namespace
     static std::string Lower(std::string text)
     {
         return LWSUI::FoldSearchText(std::move(text));
@@ -24,17 +51,10 @@ namespace LWSSettings
         LWSUI::Control* editor;
         LWSUI::Button* reset;
         std::function<void(const Value&)> refresh;
-        // Type-erased connection ownership, not type-erased control state.
-        std::vector<std::shared_ptr<void>> connections;
+        ConnectionSet connections;
         bool updating = false;
         std::optional<bool> editVisibility;
         std::unique_ptr<LWSUI::Control> CreateEditor(const SettingDefinition&, std::function<Status(Value, LWSUI::EditPhase)> edit);
-        template <class E, class F>
-        void Connect(E& event, F callback)
-        {
-            using C = typename E::Connection;
-            connections.push_back(std::make_shared<C>(event.Connect(std::move(callback))));
-        }
     };
     std::unique_ptr<LWSUI::Control> SettingsView::Binding::CreateEditor(const SettingDefinition& setting,
                                              std::function<Status(Value, LWSUI::EditPhase)> edit)
@@ -51,34 +71,34 @@ namespace LWSSettings
                     auto& control = own(std::make_unique<LWSUI::TextBox>());
                     editor = &control;
                     refresh = [&control](const Value& v) { control.SetText(std::get<std::string>(v)); };
-                    Connect(control.OnEdit,
-                            [edit, &control](const std::string& value, LWSUI::EditPhase phase)
-                            {
-                                auto result = edit(value, phase);
-                                if (!result)
-                                    control.SetValidation(result.error().message);
-                            });
+                    connections.Connect(control.OnEdit,
+                                        [edit, &control](const std::string& value, LWSUI::EditPhase phase)
+                                        {
+                                            auto result = edit(value, phase);
+                                            if (!result)
+                                                control.SetValidation(result.error().message);
+                                        });
                 }
                 else if constexpr (std::is_same_v<S, FileDefinition>)
                 {
                     auto& control = own(std::make_unique<LWSUI::FilePicker>());
                     editor = &control;
                     refresh = [&control](const Value& v) { control.SetValue(std::get<std::string>(v)); };
-                    Connect(control.OnEdit, [edit](const auto& value, auto phase) { (void) edit(value, phase); });
+                    connections.Connect(control.OnEdit, [edit](const auto& value, auto phase) { (void) edit(value, phase); });
                 }
                 else if constexpr (std::is_same_v<S, BooleanDefinition>)
                 {
                     auto& control = own(std::make_unique<LWSUI::CheckBox>());
                     editor = &control;
                     refresh = [&control](const Value& v) { control.SetValue(std::get<bool>(v)); };
-                    Connect(control.OnChange, [edit](bool value) { (void) edit(value, LWSUI::EditPhase::Commit); });
+                    connections.Connect(control.OnChange, [edit](bool value) { (void) edit(value, LWSUI::EditPhase::Commit); });
                 }
                 else if constexpr (std::is_same_v<S, ColorDefinition>)
                 {
                     auto& control = own(std::make_unique<LWSUI::ColorPicker>());
                     editor = &control;
                     refresh = [&control](const Value& v) { control.SetValue(std::get<LLUtils::Color>(v)); };
-                    Connect(control.OnEdit, [edit](auto value, auto phase) { (void) edit(value, phase); });
+                    connections.Connect(control.OnEdit, [edit](auto value, auto phase) { (void) edit(value, phase); });
                 }
                 else if constexpr (std::is_same_v<S, IntegerDefinition> || std::is_same_v<S, DecimalDefinition>)
                 {
@@ -87,7 +107,7 @@ namespace LWSSettings
                     {
                         editor = &control;
                         refresh = [&control](const Value& v) { control.SetValue(std::get<T>(v)); };
-                        Connect(control.OnEdit, [edit](T value, auto phase) { (void) edit(value, phase); });
+                        connections.Connect(control.OnEdit, [edit](T value, auto phase) { (void) edit(value, phase); });
                     };
                     if (spec.presentation == NumericPresentation::Slider)
                     {
@@ -96,7 +116,7 @@ namespace LWSSettings
                                                                         spec.defaultValue);
                         editor = &slider;
                         refresh = [&value](const Value& v) { value.SetValue(std::get<T>(v)); };
-                        Connect(value.OnEdit, [edit](T value, auto phase) { (void) edit(value, phase); });
+                        connections.Connect(value.OnEdit, [edit](T value, auto phase) { (void) edit(value, phase); });
                     }
                     else
                         setup(own(std::make_unique<LWSUI::NumericEdit<T>>(
@@ -111,8 +131,8 @@ namespace LWSSettings
                     {
                         editor = &control;
                         refresh = [&control](const Value& v) { control.SetValue(std::get<std::string>(v)); };
-                        Connect(control.OnChange,
-                                [edit](const std::string& value) { (void) edit(value, LWSUI::EditPhase::Commit); });
+                        connections.Connect(control.OnChange,
+                                            [edit](const std::string& value) { (void) edit(value, LWSUI::EditPhase::Commit); });
                     };
                     if (spec.presentation == ChoicePresentation::Radio)
                         setup(own(std::make_unique<LWSUI::RadioGroup>(choices)));
@@ -619,7 +639,7 @@ namespace LWSSettings
                 reset.SetStyle(theme_.footer);
                 reset.SetForeground(theme_.footer.muted);
                 reset.SetHighlightPattern("");
-                binding->Connect(reset.OnClick, [this, id = setting.id] { Report(document_.Reset(id)); });
+                binding->connections.Connect(reset.OnClick, [this, id = setting.id] { Report(document_.Reset(id)); });
                 hovers_.push_back(
                     row.OnHover.Connect([this, title = setting.label, path, text = setting.description]
                                          { Describe(title, path, text); }));
