@@ -9,30 +9,6 @@
 
 namespace LWSSettings
 {
-    namespace
-    {
-        class ConnectionSet
-        {
-          public:
-
-            ConnectionSet() = default;
-            ConnectionSet(const ConnectionSet&) = delete;
-            ConnectionSet& operator=(const ConnectionSet&) = delete;
-            ConnectionSet(ConnectionSet&&) noexcept = default;
-            ConnectionSet& operator=(ConnectionSet&&) noexcept = default;
-
-            template <class E, class F>
-            void Connect(E& event, F callback)
-            {
-                connections_.push_back(std::make_shared<typename E::Connection>(event.Connect(std::move(callback))));
-            }
-            void Clear() { connections_.clear(); }
-
-          private:
-
-            std::vector<std::shared_ptr<void>> connections_;
-        };
-    }  // namespace
     static std::string Lower(std::string text)
     {
         return LWSUI::FoldSearchText(std::move(text));
@@ -51,7 +27,7 @@ namespace LWSSettings
         LWSUI::Control* editor;
         LWSUI::Button* reset;
         std::function<void(const Value&)> refresh;
-        ConnectionSet connections;
+        LWSUI::ConnectionSet connections;
         bool updating = false;
         std::optional<bool> editVisibility;
         std::unique_ptr<LWSUI::Control> CreateEditor(const SettingDefinition&, std::function<Status(Value, LWSUI::EditPhase)> edit);
