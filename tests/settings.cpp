@@ -703,7 +703,11 @@ TEST_CASE("Change callbacks may update a different setting")
     REQUIRE_THROWS(KeyPress(*check, Key::Space)); throwing.Disconnect();
     REQUIRE(p.SetValue("enabled", false)); REQUIRE_FALSE(check->Value());
     auto* numeric = FindControl<LWSUI::NumericEdit<int64_t>>(view);
-    Draft(*FindControl<LWSUI::TextBox>(*numeric), "invalid");
+    auto* numberText = FindControl<LWSUI::TextBox>(*numeric);
+    Draft(*numberText, "invalid");
+    REQUIRE_FALSE(numberText->InputError().empty());
+    REQUIRE(view.Finish(Phase::Commit));
+    Draft(*numberText, "-");
     REQUIRE_FALSE(view.Finish(Phase::Commit)); REQUIRE_FALSE(view.ValidationMessage().empty());
     REQUIRE(SettingsStorage::LoadTemplate(p, Template()));
     REQUIRE(view.ValidationMessage().empty());
@@ -2889,7 +2893,7 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
     REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0x00ff0080}});
     key(Key::Enter);
     REQUIRE(host.HasPopup()); // Enter in a field commits that field, not the popup.
-    draft("#bad!");
+    draft("#bad");
     REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0x00ff0080}});
     key(Key::Down, false, true); // Invalid hex blocks picker-wide adjustment.
     key(Key::Right, false, false, true);
