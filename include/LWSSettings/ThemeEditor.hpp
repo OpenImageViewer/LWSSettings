@@ -27,6 +27,8 @@ namespace LWSSettings
         std::expected<ThemeOverrides, Error> Overrides() const;
         LWSUI::Event<void(const SettingsTheme&)> OnPreview;
         LWSUI::Event<void(const Error&)> OnError;
+        // Non-repeated keys from the editor window, before controls consume shortcuts.
+        LWSUI::Event<void(LWS::KeyCode)> OnKeyDown;
 
       private:
 
@@ -55,5 +57,6 @@ namespace LWSSettings
         LWSUI::Event<void(const std::string&, EditPhase, ChangeOrigin)>::Connection finished_;
         LWSUI::Event<void()>::Connection reloaded_, sessionChanged_, hidden_, resetFinished_;
         LWSUI::Event<void(const Error&)>::Connection errors_;
+        LWSUI::Event<void(LWS::KeyCode)>::Connection keys_;
     };
 }  // namespace LWSSettings

@@ -37,6 +37,7 @@ namespace LWSSettings
     { Connect(); }
     void ThemeEditor::Connect()
     {
+        keys_ = editor_.OnKeyDown.Connect([this](LWS::KeyCode key) { OnKeyDown.Raise(key); });
         errors_ = editor_.Document().OnError.Connect([this](const Error& error) { OnError.Raise(error); });
         sessionChanged_ = session_.OnChange.Connect([this]
         {

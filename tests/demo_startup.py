@@ -5,11 +5,18 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import struct
 import sys
 import tempfile
 import time
 
 exe, examples, scratch = map(lambda value: Path(value).resolve(), sys.argv[1:4])
+event_debugger = len(sys.argv) > 4 and sys.argv[4] == "1"
+if os.name == "nt":
+    image = exe.read_bytes()
+    pe = struct.unpack_from("<I", image, 0x3c)[0]
+    assert struct.unpack_from("<H", image, pe + 24 + 68)[0] == 2, "Expected Windows GUI subsystem"
+    assert (b"LWSSettings Events" in image) == event_debugger
 scratch.mkdir(parents=True, exist_ok=True)
 checks = 0
 
@@ -31,6 +38,7 @@ with tempfile.TemporaryDirectory(prefix="run-", dir=scratch) as temporary:
         global checks
         result = subprocess.run([str(directory / exe.name), *arguments], cwd=directory,
                                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=25)
+        assert not result.stdout, (directory.name, result.stdout)
         assert result.returncode == expected, (directory.name, result.returncode, result.stdout, result.stderr)
         assert ("Theme warning:" in result.stderr) == warning, (directory.name, result.stderr)
         checks += 1
@@ -39,6 +47,8 @@ with tempfile.TemporaryDirectory(prefix="run-", dir=scratch) as temporary:
     clean = case("settings-only")
     assert {path.name for path in clean.iterdir()} == {exe.name, "settings.json"}
     run(clean, "--smoke")
+    run(clean, "--export-theme", expected=2)
+    run(clean, "--smoke", "--theme", expected=2)
     assert not (clean / "user-settings.json").exists()
     assert not (clean / "theme.json").exists()
     run(case("deferred-resize"), "--no-live-resize", "--edit-theme", "--snapshot")
@@ -94,7 +104,6 @@ with tempfile.TemporaryDirectory(prefix="run-", dir=scratch) as temporary:
     assert exported["version"] == 1 and exported["children"]
 
     if os.name == "nt":
-        # Deliver F6 only to a window owned by this test's child process; no global input injection.
         from ctypes import wintypes
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
@@ -102,38 +111,77 @@ with tempfile.TemporaryDirectory(prefix="run-", dir=scratch) as temporary:
         user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
         user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
         user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
-        hotkey = case("f6-without-template")
-        process = subprocess.Popen([str(hotkey / exe.name), "--smoke"], cwd=hotkey,
+        user32.IsWindowVisible.argtypes = [wintypes.HWND]
+        hotkey = case("local-window-hotkeys")
+        process = subprocess.Popen([str(hotkey / exe.name)], cwd=hotkey,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        sent = False
-        opened = False
-        try:
-            deadline = time.monotonic() + 10
+
+        def windows():
+            found = {}
+
+            @callback_type
+            def collect(hwnd, unused):
+                pid = wintypes.DWORD()
+                user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                if pid.value == process.pid:
+                    title = ctypes.create_unicode_buffer(256)
+                    user32.GetWindowTextW(hwnd, title, len(title))
+                    found[title.value] = hwnd
+                return True
+
+            user32.EnumWindows(collect, 0)
+            return found
+
+        def wait_for(predicate):
+            deadline = time.monotonic() + 8
             while process.poll() is None and time.monotonic() < deadline:
-                windows = []
-
-                @callback_type
-                def collect(hwnd, unused):
-                    pid = wintypes.DWORD()
-                    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-                    if pid.value == process.pid:
-                        title = ctypes.create_unicode_buffer(256)
-                        user32.GetWindowTextW(hwnd, title, len(title))
-                        windows.append((hwnd, title.value))
-                    return True
-
-                user32.EnumWindows(collect, 0)
-                for hwnd, title in windows:
-                    if title == "Settings" and not sent:
-                        assert user32.PostMessageW(hwnd, 0x100, 0x75, 1)  # WM_KEYDOWN / F6
-                        assert user32.PostMessageW(hwnd, 0x101, 0x75, 0xC0000001)
-                        sent = True
-                    if title == "Theme editor":
-                        opened = True
+                found = windows()
+                if predicate(found):
+                    return found
                 time.sleep(.02)
+            raise AssertionError(("Hotkey state not reached", process.poll(), windows()))
+
+        def key(hwnd, code, repeat=False):
+            # Messages target only windows belonging to this test process.
+            assert hwnd in windows().values()
+            assert user32.PostMessageW(hwnd, 0x100, code, 0x40000001 if repeat else 1)
+            assert user32.PostMessageW(hwnd, 0x101, code, 0xC0000001)
+
+        def event_visible(found):
+            hwnd = found.get("LWSSettings Events")
+            return bool(hwnd and user32.IsWindowVisible(hwnd))
+
+        try:
+            found = wait_for(lambda found: "Settings" in found)
+            main_window = found["Settings"]
+            key(main_window, 0x75)  # F6
+            found = wait_for(lambda found: "Theme editor" in found)
+            theme_window = found["Theme editor"]
+            key(main_window, 0x77)  # F8
+            if event_debugger:
+                found = wait_for(event_visible)
+                event_window = found["LWSSettings Events"]
+                key(event_window, 0x77, repeat=True)
+                time.sleep(.1)
+                assert event_visible(windows())
+                key(event_window, 0x77)
+                wait_for(lambda found: not event_visible(found))
+                key(theme_window, 0x77)
+                found = wait_for(event_visible)
+                assert found["LWSSettings Events"] == event_window
+                assert user32.PostMessageW(event_window, 0x10, 0, 0)  # WM_CLOSE hides
+                wait_for(lambda found: not event_visible(found))
+                key(main_window, 0x77)
+                wait_for(event_visible)
+            else:
+                key(theme_window, 0x77)
+                time.sleep(.2)
+                assert "LWSSettings Events" not in windows()
+            assert user32.PostMessageW(main_window, 0x10, 0, 0)
             stdout, stderr = process.communicate(timeout=10)
-            assert process.returncode == 0 and sent and opened, (sent, opened, stdout, stderr)
+            assert process.returncode == 0 and not stdout and not stderr, (process.returncode, stdout, stderr)
             assert not (hotkey / "theme.json").exists()
+            assert not (hotkey / "user-settings.json").exists()
             checks += 1
         finally:
             if process.poll() is None:

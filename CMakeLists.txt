@@ -4,6 +4,7 @@ set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(LWSSETTINGS_BUILD_TESTS "Build settings tests" ${PROJECT_IS_TOP_LEVEL})
 option(LWSSETTINGS_BUILD_DEMO "Build settings demo" ${PROJECT_IS_TOP_LEVEL})
+option(LWSSETTINGS_ENABLE_EVENT_DEBUGGER "Enable the demo event window and F8 shortcut" ON)
 set(LWSSETTINGS_LWS_SOURCE_DIR "" CACHE PATH "LWS source directory")
 set(LWSSETTINGS_JSON_SOURCE_DIR "" CACHE PATH "nlohmann/json source directory")
 set(LWSSETTINGS_JSON_INCLUDE_DIR "" CACHE PATH "nlohmann/json include directory (header-only, bypasses find_package)")
@@ -46,6 +47,16 @@ endif()
 if(LWSSETTINGS_BUILD_DEMO)
     add_executable(LWSSettingsDemo examples/main.cpp)
     target_link_libraries(LWSSettingsDemo PRIVATE LWSSettings)
+    target_compile_definitions(LWSSettingsDemo PRIVATE
+        LWSSETTINGS_ENABLE_EVENT_DEBUGGER=$<BOOL:${LWSSETTINGS_ENABLE_EVENT_DEBUGGER}>)
+    if(WIN32)
+        set_target_properties(LWSSettingsDemo PROPERTIES WIN32_EXECUTABLE TRUE)
+        if(MSVC)
+            target_link_options(LWSSettingsDemo PRIVATE /ENTRY:mainCRTStartup)
+        elseif(MINGW)
+            target_link_options(LWSSettingsDemo PRIVATE -Wl,--entry,mainCRTStartup)
+        endif()
+    endif()
     # Launching from the executable directory must work with custom runtime output
     # paths and multi-config generators, not just from the top-level build folder.
     # Settings defaults live in the template. Saved values and theme overrides are user-owned.
@@ -67,6 +78,8 @@ if(LWSSETTINGS_BUILD_TESTS)
     target_include_directories(LWSSettingsTests PRIVATE src examples)
     target_compile_definitions(LWSSettingsTests PRIVATE LWSSETTINGS_EXAMPLES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/examples")
     target_link_libraries(LWSSettingsTests PRIVATE LWSSettings Catch2::Catch2WithMain)
+    target_compile_definitions(LWSSettingsTests PRIVATE
+        LWSSETTINGS_ENABLE_EVENT_DEBUGGER=$<BOOL:${LWSSETTINGS_ENABLE_EVENT_DEBUGGER}>)
     get_target_property(_catch_source Catch2 SOURCE_DIR)
     list(APPEND CMAKE_MODULE_PATH "${_catch_source}/../extras")
     include(Catch)
@@ -77,7 +90,7 @@ if(LWSSETTINGS_BUILD_TESTS)
             add_test(NAME LWSSettingsDemoStartup COMMAND "${Python3_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/tests/demo_startup.py"
                 "$<TARGET_FILE:LWSSettingsDemo>" "${CMAKE_CURRENT_SOURCE_DIR}/examples"
-                "${CMAKE_CURRENT_BINARY_DIR}/demo-startup-tests")
+                "${CMAKE_CURRENT_BINARY_DIR}/demo-startup-tests" "$<BOOL:${LWSSETTINGS_ENABLE_EVENT_DEBUGGER}>")
             set_tests_properties(LWSSettingsDemoStartup PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE)
         endif()
     endif()

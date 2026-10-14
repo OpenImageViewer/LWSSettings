@@ -195,7 +195,7 @@ flushed temporary file in the destination directory and atomic replacement;
 JSON text uses CRLF. The parent directory must already exist.
 
 `Change` contains `id`, `oldValue`, `newValue`, `phase`, `origin`, and `domain`.
-The demo prints JSON records with these fields and `valueType` (see
+The optional event debugger displays JSON records with these fields and `valueType` (see
 `examples/EventLogging.hpp`). Preview/commit/cancel timing is independent of
 painting. OnApply edit commits remain in the Working domain; Apply publishes
 Applied-domain commits for changed values.
@@ -443,3 +443,18 @@ not a JSON theme or settings property.
 The demo accepts `--no-live-resize` to use deferred redraw for both the settings
 window and its live theme editor. Menu-bar double-click behavior is a separate
 LWSUI opt-in and is not enabled automatically by this resize policy.
+
+### Optional event debugger
+
+The Windows demo is a GUI executable and opens without a console. Startup
+failures and theme warnings use dialogs during interactive launches. Export,
+snapshot, and smoke commands retain redirected diagnostics and exit codes.
+
+The event window is enabled by default. Configure with
+`-DLWSSETTINGS_ENABLE_EVENT_DEBUGGER=OFF` to exclude it. Its native title bar and
+resizable border support moving, resizing, minimizing, and maximizing.
+F8 toggles it from the settings, theme
+editor, or event window. The newest 200 settings-change records are retained in
+memory while hidden. The read-only viewer supports selection and Copy, and Clear
+empties its history. Closing the event window hides it, and closing Settings
+ends the application. The debug feature writes no event files or console output.

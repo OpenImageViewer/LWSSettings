@@ -16,6 +16,9 @@
 #include <LWS/TextClipboard.hpp>
 #include <catch2/catch_approx.hpp>
 #include "EventLogging.hpp"
+#if LWSSETTINGS_ENABLE_EVENT_DEBUGGER
+#include "EventDebugWindow.hpp"
+#endif
 #include "SettingsIcon.hpp"
 #include <thread>
 #include <set>
@@ -4128,3 +4131,107 @@ TEST_CASE("Description geometry contains its scrollbar with large padding", "[vi
     REQUIRE(bar->Bounds().x >= panel->Bounds().x);
     REQUIRE(bar->Bounds().x + bar->Bounds().width <= panel->Bounds().x + panel->Bounds().width);
 }
+
+#if LWSSETTINGS_ENABLE_EVENT_DEBUGGER
+TEST_CASE("Optional event history retains recent structured records and clears", "[events]")
+{
+    LWS::PlatformContext platform;
+    int errors = 0;
+    Example::EventDebugWindow events(platform, LWSUI::MakeTheme(), [&](const auto&) { ++errors; });
+    for (int i = 0; i < 250; ++i)
+        events.Append(Change{std::to_string(i), std::string{"café"}, int64_t{i}, EditPhase::Preview,
+                             ChangeOrigin::User, ValueDomain::Working});
+    REQUIRE(events.Records().size() == Example::EventDebugWindow::HistoryLimit);
+    const auto first = Json::parse(events.Records().front());
+    const auto last = Json::parse(events.Records().back());
+    REQUIRE(first["id"] == "50");
+    REQUIRE(last["id"] == "249");
+    REQUIRE(last["oldValue"] == "café");
+    REQUIRE(last["newValue"] == 249);
+    REQUIRE(last["phase"] == "preview");
+    REQUIRE(last["domain"] == "working");
+    REQUIRE(last["origin"] == "user");
+    events.Clear();
+    REQUIRE(events.Records().empty());
+    REQUIRE(errors == 0);
+}
+#endif
+
+#if LWSSETTINGS_ENABLE_EVENT_DEBUGGER
+namespace LWSSettings::Example
+{
+    struct EventDebugWindowTestAccess
+    {
+        static LWSUI::UIHost* Host(EventDebugWindow& events) { return events.host_.get(); }
+        static LWSUI::TextBox* Output(EventDebugWindow& events) { return events.output_; }
+    };
+}
+TEST_CASE("Event window preserves hidden history and supports read-only copying", "[viewer][events]")
+{
+    TestPlatform platform;
+    int errors = 0;
+    Example::EventDebugWindow events(platform, LWSUI::MakeTheme(), [&](const auto&) { ++errors; });
+    const Change event{"name", std::string{"old"}, std::string{"café 日本語"}, EditPhase::Commit,
+                       ChangeOrigin::User, ValueDomain::Applied};
+    events.Append(event);
+    events.RequestToggle();
+    PumpFor(platform, 40);
+    auto* host = Example::EventDebugWindowTestAccess::Host(events);
+    auto* text = Example::EventDebugWindowTestAccess::Output(events);
+    REQUIRE(host);
+    REQUIRE(host->RedrawOnResize());
+    REQUIRE(text);
+    REQUIRE(host->Window().IsVisible());
+    const auto styles = LWS::WindowStyle::Caption | LWS::WindowStyle::CloseButton |
+                        LWS::WindowStyle::ResizableBorder | LWS::WindowStyle::MinimizeButton |
+                        LWS::WindowStyle::MaximizeButton;
+    REQUIRE(host->Window().GetWindowStyles() == styles);
+#ifdef LWS_HAS_WIN32_BACKEND
+    const auto hwnd = LWS::Win32::GetHwnd(host->Window());
+    REQUIRE(hwnd);
+    const auto nativeStyles = GetWindowLongPtrW(*hwnd, GWL_STYLE);
+    REQUIRE((nativeStyles & WS_CAPTION) == WS_CAPTION);
+    REQUIRE((nativeStyles & WS_THICKFRAME) != 0);
+    REQUIRE(host->Window().RequestPlacement({.clientSize = LWS::LogicalSize{640, 360}}) == LWS::Result::Success);
+    PumpFor(platform, 20);
+    REQUIRE(host->Window().GetPlacement().clientSize == LWS::LogicalSize{640, 360});
+    const auto position = host->Window().GetPlacement().position;
+    REQUIRE(position);
+    const LWS::Point moved{position->x + 20, position->y + 20};
+    REQUIRE(host->Window().RequestPlacement({.position = moved}) == LWS::Result::Success);
+    REQUIRE(host->Window().GetPlacement().position == moved);
+#endif
+    REQUIRE(host->Focus(text));
+    const auto original = text->Text();
+    REQUIRE(original == Example::EventJson(event).dump() + "\n");
+    KeyPress(*text, Key::A, false, true);
+    KeyPress(*text, Key::C, false, true);
+#ifdef _WIN32
+    std::string copied;
+    auto result = LWS::ClipboardResult::AccessDenied;
+    for (int attempt = 0; attempt < 30 && result != LWS::ClipboardResult::Success; ++attempt)
+    {
+        LWS::RequestClipboardText(host->Window(), [&](auto status, std::string value)
+        { result = status; copied = std::move(value); });
+        if (result != LWS::ClipboardResult::Success) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    REQUIRE(result == LWS::ClipboardResult::Success);
+    REQUIRE(copied == original);
+#endif
+    REQUIRE(text->Dispatch({.kind = Kind::Text, .text = "cannot edit"}));
+    REQUIRE(text->Text() == original);
+    events.RequestToggle();
+    PumpFor(platform, 20);
+    REQUIRE_FALSE(host->Window().IsVisible());
+    events.Append(event);
+    REQUIRE(text->Text() == original);
+    events.RequestToggle();
+    PumpFor(platform, 20);
+    REQUIRE(host->Window().IsVisible());
+    REQUIRE(text->Text() == original + original);
+    FindButton(*text->Parent(), "Clear")->OnClick.Raise();
+    REQUIRE(text->Text().empty());
+    REQUIRE(events.Records().empty());
+    REQUIRE(errors == 0);
+}
+#endif

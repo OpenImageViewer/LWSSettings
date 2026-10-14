@@ -11,10 +11,25 @@
 #include <iostream>
 #include <LWS/Timer.hpp>
 #include <fstream>
-#include "EventLogging.hpp"
+#if LWSSETTINGS_ENABLE_EVENT_DEBUGGER
+#include "EventDebugWindow.hpp"
+#endif
 #ifdef _WIN32
     #include <windows.h>
 #endif
+static void Diagnostic(const std::string& message, bool interactive, bool warning = false)
+{
+    std::cerr << message << '\n';
+#ifdef _WIN32
+    OutputDebugStringA((message + "\n").c_str());
+    if (interactive)
+        MessageBoxW(nullptr, LWSUI::NativeText(message).c_str(), L"LWSSettings",
+                    MB_OK | (warning ? MB_ICONWARNING : MB_ICONERROR));
+#else
+    (void) interactive;
+    (void) warning;
+#endif
+}
 static void Snapshot(LWSSettings::SettingsView& view, const std::filesystem::path& path = "snapshot.ppm")
 {
     LWSUI::Canvas canvas;
@@ -40,8 +55,19 @@ static void Snapshot(LWSSettings::SettingsView& view, const std::filesystem::pat
 }
 int main(int argc, char** argv)
 {
-#ifdef _WIN32
-    SetConsoleOutputCP(CP_UTF8);
+    bool interactive = true;
+    for (int i = 1; i < argc; ++i)
+    {
+        const std::string_view arg = argv[i];
+        if (arg == "--smoke" || arg == "--snapshot" || arg == "--export-theme" || arg == "--export-theme-template")
+            interactive = false;
+    }
+#ifdef LWS_HAS_WIN32_BACKEND
+    if (LWS::Win32::BootstrapProcess() != LWS::Result::Success)
+    {
+        Diagnostic("Cannot initialize the Windows process", interactive);
+        return 1;
+    }
 #endif
     LWSSettings::EditorConfig config;
     config.document.valuesFile = "user-settings.json";
@@ -57,7 +83,7 @@ int main(int argc, char** argv)
         {
             if (i + 1 == argc)
             {
-                std::cerr << arg << " requires a path\n";
+                Diagnostic(arg + " requires a path", interactive);
                 return 2;
             }
             if (arg == "--icon")
@@ -93,7 +119,7 @@ int main(int argc, char** argv)
         auto result = LWSSettings::ThemeStorage::SaveTemplateFile(exportTemplate);
         if (!result)
         {
-            std::cerr << result.error().message << '\n';
+            Diagnostic(result.error().message, interactive);
             return 2;
         }
         return 0;
@@ -102,32 +128,30 @@ int main(int argc, char** argv)
     std::error_code themeError;
     const bool themeExists = std::filesystem::exists(themeFile, themeError);
     if (themeError)
-        std::cerr << "Theme warning: " << themeFile.string() << ": " << themeError.message()
-                  << "; using built-in defaults.\n";
+        Diagnostic("Theme warning: " + themeFile.string() + ": " + themeError.message() +
+                   ". Using built-in defaults.", interactive, true);
     else if (themeExists)
     {
         auto loaded = themeSession.Load();
         if (loaded)
             config.theme = themeSession.Theme();
         else
-            std::cerr << "Theme warning: " << loaded.error().location << ": " << loaded.error().message
-                      << "; using built-in defaults.\n";
+            Diagnostic("Theme warning: " + loaded.error().location + ": " + loaded.error().message +
+                       ". Using built-in defaults.", interactive, true);
     }
     else if (explicitTheme)
-        std::cerr << "Theme warning: " << themeFile.string() << ": file does not exist; using built-in defaults.\n";
+        Diagnostic("Theme warning: " + themeFile.string() + ": file does not exist. Using built-in defaults.",
+                   interactive, true);
     if (!exportTheme.empty())
     {
         auto result = LWSSettings::ThemeStorage::SaveFile(exportTheme, config.theme);
         if (!result)
         {
-            std::cerr << result.error().location << ": " << result.error().message << '\n';
+            Diagnostic(result.error().location + ": " + result.error().message, interactive);
             return 2;
         }
         return 0;
     }
-#ifdef LWS_HAS_WIN32_BACKEND
-    if (LWS::Win32::BootstrapProcess() != LWS::Result::Success) return 1;
-#endif
     LWS::PlatformContext platform;
     const LWS::PlatformConfig platformConfig{
 #ifdef LWS_HAS_WIN32_BACKEND
@@ -137,13 +161,16 @@ int main(int argc, char** argv)
 #endif
     };
     if (platform.Init(platformConfig) != LWS::Result::Success)
+    {
+        Diagnostic("Cannot initialize the window platform", interactive);
         return 1;
+    }
     LWSSettings::SettingsEditor editor(platform, config);
     auto& page = editor.Document();
-    auto report = [](const auto& result)
+    auto report = [interactive](const auto& result)
     {
         if (!result)
-            std::cerr << result.error().location << ": " << result.error().message << '\n';
+            Diagnostic(result.error().location + ": " + result.error().message, interactive);
         return bool(result);
     };
     if (!report(LWSSettings::SettingsStorage::LoadTemplateFile(page, "settings.json")))
@@ -152,21 +179,24 @@ int main(int argc, char** argv)
     const bool valuesExist = std::filesystem::exists(config.document.valuesFile, valuesError);
     if (valuesError)
     {
-        std::cerr << config.document.valuesFile.string() << ": " << valuesError.message() << '\n';
+        Diagnostic(config.document.valuesFile.string() + ": " + valuesError.message(), interactive);
         return 3;
     }
     if (valuesExist && !report(LWSSettings::SettingsStorage::LoadValuesFile(page, config.document.valuesFile)))
         return 3;
-    std::cout << "LWSSettings: live settings events (preview / commit / cancel) are printed below." << std::endl;
-    auto subscription = page.OnChange.Connect([](const LWSSettings::Change& change)
-                                              { LWSSettings::Example::PrintEvent(std::cout, change); });
     bool errorReported = false;
     auto errors = page.OnError.Connect(
         [&](const LWSSettings::Error& error)
         {
             errorReported = true;
-            std::cerr << error.location << ": " << error.message << '\n';
+            Diagnostic(error.location + ": " + error.message, false);
         });
+#if LWSSETTINGS_ENABLE_EVENT_DEBUGGER
+    LWSSettings::Example::EventDebugWindow eventWindow(platform, config.theme.base,
+        [&](const auto& error) { page.OnError.Raise(error); });
+    auto subscription = page.OnChange.Connect([&](const auto& change) { eventWindow.Append(change); });
+    LWSUI::Event<void(LWS::KeyCode)>::Connection themeHotkey;
+#endif
     if (!report(editor.Show()))
         return 4;
     std::unique_ptr<LWSSettings::ThemeEditor> themeEditor;
@@ -191,7 +221,11 @@ int main(int argc, char** argv)
                 if (report(loaded))
                 {
                     themeErrors = candidate->OnError.Connect(
-                        [&](const auto& error) { std::cerr << error.location << ": " << error.message << '\n'; });
+                        [&](const auto& error) { Diagnostic(error.location + ": " + error.message, false); });
+#if LWSSETTINGS_ENABLE_EVENT_DEBUGGER
+                    themeHotkey = candidate->OnKeyDown.Connect([&](LWS::KeyCode key)
+                    { if (key == LWS::KeyCode::F8) eventWindow.RequestToggle(); });
+#endif
                     themeEditor = std::move(candidate);
                 }
             }
@@ -210,11 +244,12 @@ int main(int argc, char** argv)
     auto hotkey = editor.OnKeyDown.Connect([&](LWS::KeyCode key)
     {
         if (key == LWS::KeyCode::F6) openTheme();
+#if LWSSETTINGS_ENABLE_EVENT_DEBUGGER
+        if (key == LWS::KeyCode::F8) eventWindow.RequestToggle();
+#endif
     });
     auto hidden = editor.OnHidden.Connect([&] { platform.RequestQuit(); });
     if (editTheme) openTheme();
-    std::cout << "Press F6 to open the live theme editor. Theme edits preview immediately; Save writes the file."
-              << std::endl;
     LWS::HighPrecisionTimer smokeExit(platform, [&] { platform.RequestQuit(); });
     if (smokeMilliseconds)
     {
@@ -233,7 +268,7 @@ int main(int argc, char** argv)
         return 5;
     if (page.Persistence().error)
     {
-        std::cerr << page.Persistence().error->message << '\n';
+        Diagnostic(page.Persistence().error->message, false);
         return 5;
     }
 }
