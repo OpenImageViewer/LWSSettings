@@ -194,7 +194,8 @@ namespace LWSSettings
         {
             if (fields["preset"] == "light") profile.preset = LWSUI::ThemePreset::Light;
             else if (fields["preset"] == "warm") profile.preset = LWSUI::ThemePreset::Warm;
-            else if (fields["preset"] != "dark") return std::unexpected(Error{"preset", "Unknown theme preset"});
+            else if (fields["preset"] == "dark") profile.preset = LWSUI::ThemePreset::Dark;
+            else return std::unexpected(Error{"preset", "Unknown theme preset"});
             fields.erase("preset");
         }
         auto values = DecodeOverrides(fields);

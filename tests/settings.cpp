@@ -309,7 +309,7 @@ TEST_CASE("Templates create typed defaults without a platform session")
     REQUIRE(explicitPopup->popups.popupWidth == 500);
     REQUIRE(explicitPopup->popups.popupHeight == 400);
     REQUIRE_FALSE(legacy.Overrides()->contains("sections/search/metrics/spacing"));
-    REQUIRE(internal::ThemeEditorTestAccess::Editor(legacy).Document().WorkingValue("base/colors/changed") == Value{LLUtils::Color{uint32_t{0xfbbf24ff}}});
+    REQUIRE(internal::ThemeEditorTestAccess::Editor(legacy).Document().WorkingValue("base/colors/changed") == Value{SettingsTheme{}.base.changed});
     REQUIRE(ThemeStorage::SaveOverridesFile(liveFile.path, {{"base/colors/changed", LLUtils::Color{uint32_t{0xf2c66dff}}}}));
     REQUIRE(legacy.Load(legacyTemplate.path));
     REQUIRE(legacy.Overrides()->contains("base/colors/changed"));
@@ -397,9 +397,9 @@ TEST_CASE("Templates create typed defaults without a platform session")
     REQUIRE(failing.Overrides()->empty());
 
     using Preset = LWSUI::ThemePreset;
-    REQUIRE(ThemeStorage::Encode(SettingsTheme(Preset::Dark)) == ThemeStorage::Encode(SettingsTheme{}));
+    REQUIRE(ThemeStorage::Encode(SettingsTheme(Preset::Light)) == ThemeStorage::Encode(SettingsTheme{}));
     REQUIRE_FALSE(ThemeStorage::DecodeProfile(Json{{"version", 1}, {"preset", "unknown"}}));
-    REQUIRE(ThemeStorage::DecodeProfile(Json{{"version", 1}})->preset == Preset::Dark);
+    REQUIRE(ThemeStorage::DecodeProfile(Json{{"version", 1}})->preset == Preset::Light);
     const auto luminance = [](LLUtils::Color color)
     {
         auto channel = [](double c) { c /= 255; return c <= .04045 ? c / 12.92 : std::pow((c + .055) / 1.055, 2.4); };
@@ -428,7 +428,7 @@ TEST_CASE("Templates create typed defaults without a platform session")
     REQUIRE(session.Load()); REQUIRE_FALSE(session.IsDirty());
     ThemeEditor shared(platform, session);
     REQUIRE(internal::ThemeEditorTestAccess::Editor(shared).Document().Definitions().empty());
-    REQUIRE(session.SelectPreset(Preset::Light)); REQUIRE(session.IsDirty());
+    REQUIRE(session.SelectPreset(Preset::Dark)); REQUIRE(session.IsDirty());
     REQUIRE(internal::ThemeEditorTestAccess::Editor(shared).Document().Definitions().empty()); // Switching never loads the template.
     REQUIRE(shared.Load());
     REQUIRE(internal::ThemeEditorTestAccess::Editor(shared).Document().IsDirty());
@@ -471,7 +471,7 @@ TEST_CASE("Templates create typed defaults without a platform session")
         [&](const auto&, auto, auto) { ++completions; });
     REQUIRE(pullSession.Load());
     REQUIRE(completions == 0); // Clean pulls do not replay the whole catalog.
-    REQUIRE(pullSession.SetProfile({Preset::Dark, {{section, red}}}));
+    REQUIRE(pullSession.SetProfile({Preset::Light, {{section, red}}}));
     REQUIRE(completions == 2); // One changed field and its private override flag.
     REQUIRE(pullSession.Save());
     REQUIRE(completions == 2);

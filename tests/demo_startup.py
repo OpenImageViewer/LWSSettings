@@ -75,10 +75,14 @@ with tempfile.TemporaryDirectory(prefix="run-", dir=scratch) as temporary:
     light = case("optional-theme", {"theme.json": '{"version":1,"preset":"light"}'})
     run(light, "--export-theme", "resolved.json")
     light_theme = json.loads((light / "resolved.json").read_text())
-    assert light_theme != baseline
+    assert light_theme == baseline
+    (light / "dark.json").write_bytes(b'{"version":1,"preset":"dark"}\r\n')
+    run(light, "--theme", "dark.json", "--export-theme", "resolved.json")
+    dark_theme = json.loads((light / "resolved.json").read_text())
+    assert dark_theme != baseline
     (light / "warm.json").write_bytes(b'{"version":1,"preset":"warm"}\r\n')
     run(light, "--theme", "warm.json", "--export-theme", "resolved.json")
-    assert json.loads((light / "resolved.json").read_text()) not in (baseline, light_theme)
+    assert json.loads((light / "resolved.json").read_text()) not in (baseline, dark_theme)
     run(light, "--theme", "absent.json", "--export-theme", "resolved.json", warning=True)
     assert json.loads((light / "resolved.json").read_text()) == baseline
     malformed = case("malformed-theme", {"theme.json": "invalid theme"})

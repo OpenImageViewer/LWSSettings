@@ -17,7 +17,7 @@ namespace LWSSettings
 
         static const std::vector<ThemeField>& All();
         static const ThemeField* Find(std::string_view path);
-        static std::expected<SettingsTheme, Error> Resolve(const ThemeOverrides&, LWSUI::ThemePreset preset = LWSUI::ThemePreset::Dark);
+        static std::expected<SettingsTheme, Error> Resolve(const ThemeOverrides&, LWSUI::ThemePreset preset = LWSUI::ThemePreset::Light);
         static Status Validate(const SettingsTheme&);
         static std::vector<Definition> CreateDefinitions();
     };

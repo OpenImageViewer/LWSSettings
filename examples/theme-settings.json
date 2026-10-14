@@ -5,98 +5,98 @@
         {
           "children": [
             {
-              "default": "#171c25ff",
+              "default": "#f4f6f8ff",
               "description": "Theme property: base/colors/background. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/background",
               "label": "Background",
               "type": "color"
             },
             {
-              "default": "#e5eaf2ff",
+              "default": "#20252bff",
               "description": "Theme property: base/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/foreground",
               "label": "Foreground",
               "type": "color"
             },
             {
-              "default": "#111720ff",
+              "default": "#ffffffff",
               "description": "Theme property: base/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/surface",
               "label": "Surface",
               "type": "color"
             },
             {
-              "default": "#66b7ffff",
+              "default": "#005fccff",
               "description": "Theme property: base/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/accent",
               "label": "Accent",
               "type": "color"
             },
             {
-              "default": "#fbbf24ff",
+              "default": "#20252bff",
               "description": "Theme property: base/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/changed",
               "label": "Changed",
               "type": "color"
             },
             {
-              "default": "#ff8080ff",
+              "default": "#b42318ff",
               "description": "Theme property: base/colors/error. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/error",
               "label": "Error",
               "type": "color"
             },
             {
-              "default": "#354761ff",
+              "default": "#dce6f0ff",
               "description": "Theme property: base/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/hoverSurface",
               "label": "Hover Surface",
               "type": "color"
             },
             {
-              "default": "#303b4dff",
+              "default": "#cbd5dfff",
               "description": "Theme property: base/colors/line. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/line",
               "label": "Line",
               "type": "color"
             },
             {
-              "default": "#929fb4ff",
+              "default": "#546170ff",
               "description": "Theme property: base/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/muted",
               "label": "Muted",
               "type": "color"
             },
             {
-              "default": "#26394eff",
+              "default": "#dceafaff",
               "description": "Theme property: base/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/selectedRow",
               "label": "Selected Row",
               "type": "color"
             },
             {
-              "default": "#202b3aff",
+              "default": "#e8eef5ff",
               "description": "Theme property: base/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/hoveredRow",
               "label": "Hovered Row",
               "type": "color"
             },
             {
-              "default": "#426389ff",
+              "default": "#b8d8faff",
               "description": "Theme property: base/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/selection",
               "label": "Selection",
               "type": "color"
             },
             {
-              "default": "#2c4058ff",
+              "default": "#dceafaff",
               "description": "Theme property: base/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/selectedOption",
               "label": "Selected Option",
               "type": "color"
             },
             {
-              "default": "#263344ff",
+              "default": "#ffffffff",
               "description": "Theme property: base/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/popupSurface",
               "label": "Popup Surface",
@@ -124,21 +124,21 @@
               "type": "color"
             },
             {
-              "default": "#171c25ff",
+              "default": "#292315ff",
               "description": "Theme property: base/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/searchForeground",
               "label": "Search Foreground",
               "type": "color"
             },
             {
-              "default": "#ffd166ff",
+              "default": "#ffeda3ff",
               "description": "Theme property: base/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/searchBackground",
               "label": "Search Background",
               "type": "color"
             },
             {
-              "default": "#ffffffff",
+              "default": "#20252bff",
               "description": "Theme property: base/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/colors/selectionForeground",
               "label": "Selection Foreground",
@@ -163,7 +163,7 @@
               "type": "number"
             },
             {
-              "default": 34.28571319580078,
+              "default": 29.28571319580078,
               "description": "Theme property: base/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/rowHeight",
               "label": "Row Height",
@@ -213,7 +213,7 @@
               "type": "number"
             },
             {
-              "default": 2.0,
+              "default": 1.0,
               "description": "Theme property: base/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/focusWidth",
               "label": "Focus Width",
@@ -273,7 +273,7 @@
               "type": "number"
             },
             {
-              "default": 34.0,
+              "default": 40.0,
               "description": "Theme property: base/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/swatchWidth",
               "label": "Swatch Width",
@@ -373,7 +373,7 @@
               "type": "number"
             },
             {
-              "default": 50.28571319580078,
+              "default": 22.0,
               "description": "Theme property: base/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/treeRowHeight",
               "label": "Tree Row Height",
@@ -423,7 +423,7 @@
               "type": "number"
             },
             {
-              "default": 6.857142925262451,
+              "default": 1.0,
               "description": "Theme property: base/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/treeRowPadding",
               "label": "Tree Row Padding",
@@ -433,7 +433,7 @@
               "type": "number"
             },
             {
-              "default": 228.57142639160156,
+              "default": 210.57142639160156,
               "description": "Theme property: base/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/editorMinLeft",
               "label": "Editor Min Left",
@@ -443,7 +443,7 @@
               "type": "number"
             },
             {
-              "default": 0.4699999988079071,
+              "default": 0.33000001311302185,
               "description": "Theme property: base/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/editorFraction",
               "label": "Editor Fraction",
@@ -473,7 +473,7 @@
               "type": "number"
             },
             {
-              "default": 32.0,
+              "default": 27.0,
               "description": "Theme property: base/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/menuRowHeight",
               "label": "Menu Row Height",
@@ -483,7 +483,7 @@
               "type": "number"
             },
             {
-              "default": 8.0,
+              "default": 6.0,
               "description": "Theme property: base/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
               "id": "base/metrics/menuMaxRows",
               "label": "Menu Max Rows",
@@ -620,7 +620,7 @@
                   "type": "text"
                 },
                 {
-                  "default": 16.0,
+                  "default": 13.0,
                   "description": "Theme property: base/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "base/typography/font/size",
                   "label": "Size",
@@ -662,7 +662,7 @@
                   "type": "text"
                 },
                 {
-                  "default": 13.714285850524902,
+                  "default": 10.0,
                   "description": "Theme property: base/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "base/typography/smallFont/size",
                   "label": "Size",
@@ -704,7 +704,7 @@
                   "type": "text"
                 },
                 {
-                  "default": 17.14285659790039,
+                  "default": 16.0,
                   "description": "Theme property: base/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "base/typography/headingFont/size",
                   "label": "Size",
@@ -788,7 +788,7 @@
                   "type": "text"
                 },
                 {
-                  "default": 11.428571701049805,
+                  "default": 10.0,
                   "description": "Theme property: base/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "base/typography/glyphFont/size",
                   "label": "Size",
@@ -887,98 +887,98 @@
             {
               "children": [
                 {
-                  "default": "#171c25ff",
+                  "default": "#f4f6f8ff",
                   "description": "Theme property: sections/header/colors/background. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/background",
                   "label": "Background",
                   "type": "color"
                 },
                 {
-                  "default": "#e5eaf2ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/header/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/foreground",
                   "label": "Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/header/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/surface",
                   "label": "Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#66b7ffff",
+                  "default": "#005fccff",
                   "description": "Theme property: sections/header/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/accent",
                   "label": "Accent",
                   "type": "color"
                 },
                 {
-                  "default": "#fbbf24ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/header/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/changed",
                   "label": "Changed",
                   "type": "color"
                 },
                 {
-                  "default": "#ff8080ff",
+                  "default": "#b42318ff",
                   "description": "Theme property: sections/header/colors/error. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/error",
                   "label": "Error",
                   "type": "color"
                 },
                 {
-                  "default": "#354761ff",
+                  "default": "#dce6f0ff",
                   "description": "Theme property: sections/header/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/hoverSurface",
                   "label": "Hover Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#303b4dff",
+                  "default": "#cbd5dfff",
                   "description": "Theme property: sections/header/colors/line. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/line",
                   "label": "Line",
                   "type": "color"
                 },
                 {
-                  "default": "#929fb4ff",
+                  "default": "#546170ff",
                   "description": "Theme property: sections/header/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/muted",
                   "label": "Muted",
                   "type": "color"
                 },
                 {
-                  "default": "#26394eff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/header/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/selectedRow",
                   "label": "Selected Row",
                   "type": "color"
                 },
                 {
-                  "default": "#202b3aff",
+                  "default": "#e8eef5ff",
                   "description": "Theme property: sections/header/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/hoveredRow",
                   "label": "Hovered Row",
                   "type": "color"
                 },
                 {
-                  "default": "#426389ff",
+                  "default": "#b8d8faff",
                   "description": "Theme property: sections/header/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/selection",
                   "label": "Selection",
                   "type": "color"
                 },
                 {
-                  "default": "#2c4058ff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/header/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/selectedOption",
                   "label": "Selected Option",
                   "type": "color"
                 },
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/header/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/popupSurface",
                   "label": "Popup Surface",
@@ -1006,21 +1006,21 @@
                   "type": "color"
                 },
                 {
-                  "default": "#171c25ff",
+                  "default": "#292315ff",
                   "description": "Theme property: sections/header/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/searchForeground",
                   "label": "Search Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#ffd166ff",
+                  "default": "#ffeda3ff",
                   "description": "Theme property: sections/header/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/searchBackground",
                   "label": "Search Background",
                   "type": "color"
                 },
                 {
-                  "default": "#ffffffff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/header/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/colors/selectionForeground",
                   "label": "Selection Foreground",
@@ -1045,7 +1045,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.28571319580078,
+                  "default": 29.28571319580078,
                   "description": "Theme property: sections/header/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/rowHeight",
                   "label": "Row Height",
@@ -1095,7 +1095,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 2.0,
+                  "default": 1.0,
                   "description": "Theme property: sections/header/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/focusWidth",
                   "label": "Focus Width",
@@ -1155,7 +1155,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.0,
+                  "default": 40.0,
                   "description": "Theme property: sections/header/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/swatchWidth",
                   "label": "Swatch Width",
@@ -1255,7 +1255,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 50.28571319580078,
+                  "default": 22.0,
                   "description": "Theme property: sections/header/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/treeRowHeight",
                   "label": "Tree Row Height",
@@ -1305,7 +1305,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 6.857142925262451,
+                  "default": 1.0,
                   "description": "Theme property: sections/header/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/treeRowPadding",
                   "label": "Tree Row Padding",
@@ -1315,7 +1315,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 228.57142639160156,
+                  "default": 210.57142639160156,
                   "description": "Theme property: sections/header/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/editorMinLeft",
                   "label": "Editor Min Left",
@@ -1325,7 +1325,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 0.4699999988079071,
+                  "default": 0.33000001311302185,
                   "description": "Theme property: sections/header/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/editorFraction",
                   "label": "Editor Fraction",
@@ -1355,7 +1355,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 32.0,
+                  "default": 27.0,
                   "description": "Theme property: sections/header/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/menuRowHeight",
                   "label": "Menu Row Height",
@@ -1365,7 +1365,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 8.0,
+                  "default": 6.0,
                   "description": "Theme property: sections/header/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/header/metrics/menuMaxRows",
                   "label": "Menu Max Rows",
@@ -1502,7 +1502,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 16.0,
+                      "default": 13.0,
                       "description": "Theme property: sections/header/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/header/typography/font/size",
                       "label": "Size",
@@ -1544,7 +1544,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 13.714285850524902,
+                      "default": 10.0,
                       "description": "Theme property: sections/header/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/header/typography/smallFont/size",
                       "label": "Size",
@@ -1586,7 +1586,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 17.14285659790039,
+                      "default": 16.0,
                       "description": "Theme property: sections/header/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/header/typography/headingFont/size",
                       "label": "Size",
@@ -1670,7 +1670,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 11.428571701049805,
+                      "default": 10.0,
                       "description": "Theme property: sections/header/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/header/typography/glyphFont/size",
                       "label": "Size",
@@ -1767,98 +1767,98 @@
             {
               "children": [
                 {
-                  "default": "#171c25ff",
+                  "default": "#f4f6f8ff",
                   "description": "Theme property: sections/search/colors/background. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/background",
                   "label": "Background",
                   "type": "color"
                 },
                 {
-                  "default": "#e5eaf2ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/search/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/foreground",
                   "label": "Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/search/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/surface",
                   "label": "Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#66b7ffff",
+                  "default": "#005fccff",
                   "description": "Theme property: sections/search/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/accent",
                   "label": "Accent",
                   "type": "color"
                 },
                 {
-                  "default": "#fbbf24ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/search/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/changed",
                   "label": "Changed",
                   "type": "color"
                 },
                 {
-                  "default": "#ff8080ff",
+                  "default": "#b42318ff",
                   "description": "Theme property: sections/search/colors/error. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/error",
                   "label": "Error",
                   "type": "color"
                 },
                 {
-                  "default": "#354761ff",
+                  "default": "#dce6f0ff",
                   "description": "Theme property: sections/search/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/hoverSurface",
                   "label": "Hover Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#303b4dff",
+                  "default": "#cbd5dfff",
                   "description": "Theme property: sections/search/colors/line. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/line",
                   "label": "Line",
                   "type": "color"
                 },
                 {
-                  "default": "#929fb4ff",
+                  "default": "#546170ff",
                   "description": "Theme property: sections/search/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/muted",
                   "label": "Muted",
                   "type": "color"
                 },
                 {
-                  "default": "#26394eff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/search/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/selectedRow",
                   "label": "Selected Row",
                   "type": "color"
                 },
                 {
-                  "default": "#202b3aff",
+                  "default": "#e8eef5ff",
                   "description": "Theme property: sections/search/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/hoveredRow",
                   "label": "Hovered Row",
                   "type": "color"
                 },
                 {
-                  "default": "#426389ff",
+                  "default": "#b8d8faff",
                   "description": "Theme property: sections/search/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/selection",
                   "label": "Selection",
                   "type": "color"
                 },
                 {
-                  "default": "#2c4058ff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/search/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/selectedOption",
                   "label": "Selected Option",
                   "type": "color"
                 },
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/search/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/popupSurface",
                   "label": "Popup Surface",
@@ -1886,21 +1886,21 @@
                   "type": "color"
                 },
                 {
-                  "default": "#171c25ff",
+                  "default": "#292315ff",
                   "description": "Theme property: sections/search/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/searchForeground",
                   "label": "Search Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#ffd166ff",
+                  "default": "#ffeda3ff",
                   "description": "Theme property: sections/search/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/searchBackground",
                   "label": "Search Background",
                   "type": "color"
                 },
                 {
-                  "default": "#ffffffff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/search/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/colors/selectionForeground",
                   "label": "Selection Foreground",
@@ -1925,7 +1925,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.28571319580078,
+                  "default": 29.28571319580078,
                   "description": "Theme property: sections/search/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/rowHeight",
                   "label": "Row Height",
@@ -1975,7 +1975,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 2.0,
+                  "default": 1.0,
                   "description": "Theme property: sections/search/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/focusWidth",
                   "label": "Focus Width",
@@ -2035,7 +2035,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.0,
+                  "default": 40.0,
                   "description": "Theme property: sections/search/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/swatchWidth",
                   "label": "Swatch Width",
@@ -2135,7 +2135,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 50.28571319580078,
+                  "default": 22.0,
                   "description": "Theme property: sections/search/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/treeRowHeight",
                   "label": "Tree Row Height",
@@ -2185,7 +2185,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 6.857142925262451,
+                  "default": 1.0,
                   "description": "Theme property: sections/search/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/treeRowPadding",
                   "label": "Tree Row Padding",
@@ -2195,7 +2195,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 228.57142639160156,
+                  "default": 210.57142639160156,
                   "description": "Theme property: sections/search/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/editorMinLeft",
                   "label": "Editor Min Left",
@@ -2205,7 +2205,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 0.4699999988079071,
+                  "default": 0.33000001311302185,
                   "description": "Theme property: sections/search/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/editorFraction",
                   "label": "Editor Fraction",
@@ -2235,7 +2235,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 32.0,
+                  "default": 27.0,
                   "description": "Theme property: sections/search/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/menuRowHeight",
                   "label": "Menu Row Height",
@@ -2245,7 +2245,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 8.0,
+                  "default": 6.0,
                   "description": "Theme property: sections/search/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/search/metrics/menuMaxRows",
                   "label": "Menu Max Rows",
@@ -2382,7 +2382,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 16.0,
+                      "default": 13.0,
                       "description": "Theme property: sections/search/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/search/typography/font/size",
                       "label": "Size",
@@ -2424,7 +2424,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 13.714285850524902,
+                      "default": 10.0,
                       "description": "Theme property: sections/search/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/search/typography/smallFont/size",
                       "label": "Size",
@@ -2466,7 +2466,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 17.14285659790039,
+                      "default": 16.0,
                       "description": "Theme property: sections/search/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/search/typography/headingFont/size",
                       "label": "Size",
@@ -2550,7 +2550,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 11.428571701049805,
+                      "default": 10.0,
                       "description": "Theme property: sections/search/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/search/typography/glyphFont/size",
                       "label": "Size",
@@ -2647,98 +2647,98 @@
             {
               "children": [
                 {
-                  "default": "#171c25ff",
+                  "default": "#f4f6f8ff",
                   "description": "Theme property: sections/tree/colors/background. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/background",
                   "label": "Background",
                   "type": "color"
                 },
                 {
-                  "default": "#e5eaf2ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/tree/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/foreground",
                   "label": "Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/tree/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/surface",
                   "label": "Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#66b7ffff",
+                  "default": "#005fccff",
                   "description": "Theme property: sections/tree/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/accent",
                   "label": "Accent",
                   "type": "color"
                 },
                 {
-                  "default": "#fbbf24ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/tree/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/changed",
                   "label": "Changed",
                   "type": "color"
                 },
                 {
-                  "default": "#ff8080ff",
+                  "default": "#b42318ff",
                   "description": "Theme property: sections/tree/colors/error. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/error",
                   "label": "Error",
                   "type": "color"
                 },
                 {
-                  "default": "#354761ff",
+                  "default": "#dce6f0ff",
                   "description": "Theme property: sections/tree/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/hoverSurface",
                   "label": "Hover Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#303b4dff",
+                  "default": "#cbd5dfff",
                   "description": "Theme property: sections/tree/colors/line. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/line",
                   "label": "Line",
                   "type": "color"
                 },
                 {
-                  "default": "#929fb4ff",
+                  "default": "#546170ff",
                   "description": "Theme property: sections/tree/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/muted",
                   "label": "Muted",
                   "type": "color"
                 },
                 {
-                  "default": "#26394eff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/tree/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/selectedRow",
                   "label": "Selected Row",
                   "type": "color"
                 },
                 {
-                  "default": "#202b3aff",
+                  "default": "#e8eef5ff",
                   "description": "Theme property: sections/tree/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/hoveredRow",
                   "label": "Hovered Row",
                   "type": "color"
                 },
                 {
-                  "default": "#426389ff",
+                  "default": "#b8d8faff",
                   "description": "Theme property: sections/tree/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/selection",
                   "label": "Selection",
                   "type": "color"
                 },
                 {
-                  "default": "#2c4058ff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/tree/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/selectedOption",
                   "label": "Selected Option",
                   "type": "color"
                 },
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/tree/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/popupSurface",
                   "label": "Popup Surface",
@@ -2766,21 +2766,21 @@
                   "type": "color"
                 },
                 {
-                  "default": "#171c25ff",
+                  "default": "#292315ff",
                   "description": "Theme property: sections/tree/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/searchForeground",
                   "label": "Search Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#ffd166ff",
+                  "default": "#ffeda3ff",
                   "description": "Theme property: sections/tree/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/searchBackground",
                   "label": "Search Background",
                   "type": "color"
                 },
                 {
-                  "default": "#ffffffff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/tree/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/colors/selectionForeground",
                   "label": "Selection Foreground",
@@ -2805,7 +2805,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.28571319580078,
+                  "default": 29.28571319580078,
                   "description": "Theme property: sections/tree/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/rowHeight",
                   "label": "Row Height",
@@ -2855,7 +2855,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 2.0,
+                  "default": 1.0,
                   "description": "Theme property: sections/tree/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/focusWidth",
                   "label": "Focus Width",
@@ -2915,7 +2915,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.0,
+                  "default": 40.0,
                   "description": "Theme property: sections/tree/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/swatchWidth",
                   "label": "Swatch Width",
@@ -3015,7 +3015,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 50.28571319580078,
+                  "default": 22.0,
                   "description": "Theme property: sections/tree/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/treeRowHeight",
                   "label": "Tree Row Height",
@@ -3065,7 +3065,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 6.857142925262451,
+                  "default": 1.0,
                   "description": "Theme property: sections/tree/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/treeRowPadding",
                   "label": "Tree Row Padding",
@@ -3075,7 +3075,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 228.57142639160156,
+                  "default": 210.57142639160156,
                   "description": "Theme property: sections/tree/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/editorMinLeft",
                   "label": "Editor Min Left",
@@ -3085,7 +3085,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 0.4699999988079071,
+                  "default": 0.33000001311302185,
                   "description": "Theme property: sections/tree/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/editorFraction",
                   "label": "Editor Fraction",
@@ -3115,7 +3115,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 32.0,
+                  "default": 27.0,
                   "description": "Theme property: sections/tree/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/menuRowHeight",
                   "label": "Menu Row Height",
@@ -3125,7 +3125,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 8.0,
+                  "default": 6.0,
                   "description": "Theme property: sections/tree/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/tree/metrics/menuMaxRows",
                   "label": "Menu Max Rows",
@@ -3262,7 +3262,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 16.0,
+                      "default": 13.0,
                       "description": "Theme property: sections/tree/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/tree/typography/font/size",
                       "label": "Size",
@@ -3304,7 +3304,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 13.714285850524902,
+                      "default": 10.0,
                       "description": "Theme property: sections/tree/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/tree/typography/smallFont/size",
                       "label": "Size",
@@ -3346,7 +3346,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 17.14285659790039,
+                      "default": 16.0,
                       "description": "Theme property: sections/tree/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/tree/typography/headingFont/size",
                       "label": "Size",
@@ -3430,7 +3430,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 11.428571701049805,
+                      "default": 10.0,
                       "description": "Theme property: sections/tree/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/tree/typography/glyphFont/size",
                       "label": "Size",
@@ -3527,98 +3527,98 @@
             {
               "children": [
                 {
-                  "default": "#171c25ff",
+                  "default": "#f4f6f8ff",
                   "description": "Theme property: sections/description/colors/background. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/background",
                   "label": "Background",
                   "type": "color"
                 },
                 {
-                  "default": "#e5eaf2ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/description/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/foreground",
                   "label": "Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/description/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/surface",
                   "label": "Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#66b7ffff",
+                  "default": "#005fccff",
                   "description": "Theme property: sections/description/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/accent",
                   "label": "Accent",
                   "type": "color"
                 },
                 {
-                  "default": "#fbbf24ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/description/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/changed",
                   "label": "Changed",
                   "type": "color"
                 },
                 {
-                  "default": "#ff8080ff",
+                  "default": "#b42318ff",
                   "description": "Theme property: sections/description/colors/error. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/error",
                   "label": "Error",
                   "type": "color"
                 },
                 {
-                  "default": "#354761ff",
+                  "default": "#dce6f0ff",
                   "description": "Theme property: sections/description/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/hoverSurface",
                   "label": "Hover Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#303b4dff",
+                  "default": "#cbd5dfff",
                   "description": "Theme property: sections/description/colors/line. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/line",
                   "label": "Line",
                   "type": "color"
                 },
                 {
-                  "default": "#929fb4ff",
+                  "default": "#546170ff",
                   "description": "Theme property: sections/description/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/muted",
                   "label": "Muted",
                   "type": "color"
                 },
                 {
-                  "default": "#26394eff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/description/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/selectedRow",
                   "label": "Selected Row",
                   "type": "color"
                 },
                 {
-                  "default": "#202b3aff",
+                  "default": "#e8eef5ff",
                   "description": "Theme property: sections/description/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/hoveredRow",
                   "label": "Hovered Row",
                   "type": "color"
                 },
                 {
-                  "default": "#426389ff",
+                  "default": "#b8d8faff",
                   "description": "Theme property: sections/description/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/selection",
                   "label": "Selection",
                   "type": "color"
                 },
                 {
-                  "default": "#2c4058ff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/description/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/selectedOption",
                   "label": "Selected Option",
                   "type": "color"
                 },
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/description/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/popupSurface",
                   "label": "Popup Surface",
@@ -3646,21 +3646,21 @@
                   "type": "color"
                 },
                 {
-                  "default": "#171c25ff",
+                  "default": "#292315ff",
                   "description": "Theme property: sections/description/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/searchForeground",
                   "label": "Search Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#ffd166ff",
+                  "default": "#ffeda3ff",
                   "description": "Theme property: sections/description/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/searchBackground",
                   "label": "Search Background",
                   "type": "color"
                 },
                 {
-                  "default": "#ffffffff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/description/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/colors/selectionForeground",
                   "label": "Selection Foreground",
@@ -3685,7 +3685,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.28571319580078,
+                  "default": 29.28571319580078,
                   "description": "Theme property: sections/description/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/rowHeight",
                   "label": "Row Height",
@@ -3735,7 +3735,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 2.0,
+                  "default": 1.0,
                   "description": "Theme property: sections/description/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/focusWidth",
                   "label": "Focus Width",
@@ -3795,7 +3795,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.0,
+                  "default": 40.0,
                   "description": "Theme property: sections/description/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/swatchWidth",
                   "label": "Swatch Width",
@@ -3895,7 +3895,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 50.28571319580078,
+                  "default": 22.0,
                   "description": "Theme property: sections/description/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/treeRowHeight",
                   "label": "Tree Row Height",
@@ -3945,7 +3945,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 6.857142925262451,
+                  "default": 1.0,
                   "description": "Theme property: sections/description/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/treeRowPadding",
                   "label": "Tree Row Padding",
@@ -3955,7 +3955,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 228.57142639160156,
+                  "default": 210.57142639160156,
                   "description": "Theme property: sections/description/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/editorMinLeft",
                   "label": "Editor Min Left",
@@ -3965,7 +3965,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 0.4699999988079071,
+                  "default": 0.33000001311302185,
                   "description": "Theme property: sections/description/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/editorFraction",
                   "label": "Editor Fraction",
@@ -3995,7 +3995,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 32.0,
+                  "default": 27.0,
                   "description": "Theme property: sections/description/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/menuRowHeight",
                   "label": "Menu Row Height",
@@ -4005,7 +4005,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 8.0,
+                  "default": 6.0,
                   "description": "Theme property: sections/description/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/description/metrics/menuMaxRows",
                   "label": "Menu Max Rows",
@@ -4142,7 +4142,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 16.0,
+                      "default": 13.0,
                       "description": "Theme property: sections/description/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/description/typography/font/size",
                       "label": "Size",
@@ -4184,7 +4184,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 13.714285850524902,
+                      "default": 10.0,
                       "description": "Theme property: sections/description/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/description/typography/smallFont/size",
                       "label": "Size",
@@ -4226,7 +4226,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 17.14285659790039,
+                      "default": 16.0,
                       "description": "Theme property: sections/description/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/description/typography/headingFont/size",
                       "label": "Size",
@@ -4310,7 +4310,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 11.428571701049805,
+                      "default": 10.0,
                       "description": "Theme property: sections/description/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/description/typography/glyphFont/size",
                       "label": "Size",
@@ -4407,98 +4407,98 @@
             {
               "children": [
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/footer/colors/background. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/background",
                   "label": "Background",
                   "type": "color"
                 },
                 {
-                  "default": "#e5eaf2ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/footer/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/foreground",
                   "label": "Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/footer/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/surface",
                   "label": "Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#66b7ffff",
+                  "default": "#005fccff",
                   "description": "Theme property: sections/footer/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/accent",
                   "label": "Accent",
                   "type": "color"
                 },
                 {
-                  "default": "#fbbf24ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/footer/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/changed",
                   "label": "Changed",
                   "type": "color"
                 },
                 {
-                  "default": "#ff8080ff",
+                  "default": "#b42318ff",
                   "description": "Theme property: sections/footer/colors/error. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/error",
                   "label": "Error",
                   "type": "color"
                 },
                 {
-                  "default": "#354761ff",
+                  "default": "#dce6f0ff",
                   "description": "Theme property: sections/footer/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/hoverSurface",
                   "label": "Hover Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#303b4dff",
+                  "default": "#cbd5dfff",
                   "description": "Theme property: sections/footer/colors/line. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/line",
                   "label": "Line",
                   "type": "color"
                 },
                 {
-                  "default": "#929fb4ff",
+                  "default": "#546170ff",
                   "description": "Theme property: sections/footer/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/muted",
                   "label": "Muted",
                   "type": "color"
                 },
                 {
-                  "default": "#26394eff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/footer/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/selectedRow",
                   "label": "Selected Row",
                   "type": "color"
                 },
                 {
-                  "default": "#202b3aff",
+                  "default": "#e8eef5ff",
                   "description": "Theme property: sections/footer/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/hoveredRow",
                   "label": "Hovered Row",
                   "type": "color"
                 },
                 {
-                  "default": "#426389ff",
+                  "default": "#b8d8faff",
                   "description": "Theme property: sections/footer/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/selection",
                   "label": "Selection",
                   "type": "color"
                 },
                 {
-                  "default": "#2c4058ff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/footer/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/selectedOption",
                   "label": "Selected Option",
                   "type": "color"
                 },
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/footer/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/popupSurface",
                   "label": "Popup Surface",
@@ -4526,21 +4526,21 @@
                   "type": "color"
                 },
                 {
-                  "default": "#171c25ff",
+                  "default": "#292315ff",
                   "description": "Theme property: sections/footer/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/searchForeground",
                   "label": "Search Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#ffd166ff",
+                  "default": "#ffeda3ff",
                   "description": "Theme property: sections/footer/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/searchBackground",
                   "label": "Search Background",
                   "type": "color"
                 },
                 {
-                  "default": "#ffffffff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/footer/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/colors/selectionForeground",
                   "label": "Selection Foreground",
@@ -4565,7 +4565,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.28571319580078,
+                  "default": 29.28571319580078,
                   "description": "Theme property: sections/footer/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/rowHeight",
                   "label": "Row Height",
@@ -4615,7 +4615,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 2.0,
+                  "default": 1.0,
                   "description": "Theme property: sections/footer/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/focusWidth",
                   "label": "Focus Width",
@@ -4675,7 +4675,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.0,
+                  "default": 40.0,
                   "description": "Theme property: sections/footer/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/swatchWidth",
                   "label": "Swatch Width",
@@ -4775,7 +4775,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 50.28571319580078,
+                  "default": 22.0,
                   "description": "Theme property: sections/footer/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/treeRowHeight",
                   "label": "Tree Row Height",
@@ -4825,7 +4825,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 6.857142925262451,
+                  "default": 1.0,
                   "description": "Theme property: sections/footer/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/treeRowPadding",
                   "label": "Tree Row Padding",
@@ -4835,7 +4835,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 228.57142639160156,
+                  "default": 210.57142639160156,
                   "description": "Theme property: sections/footer/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/editorMinLeft",
                   "label": "Editor Min Left",
@@ -4845,7 +4845,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 0.4699999988079071,
+                  "default": 0.33000001311302185,
                   "description": "Theme property: sections/footer/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/editorFraction",
                   "label": "Editor Fraction",
@@ -4875,7 +4875,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 32.0,
+                  "default": 27.0,
                   "description": "Theme property: sections/footer/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/menuRowHeight",
                   "label": "Menu Row Height",
@@ -4885,7 +4885,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 8.0,
+                  "default": 6.0,
                   "description": "Theme property: sections/footer/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/footer/metrics/menuMaxRows",
                   "label": "Menu Max Rows",
@@ -5022,7 +5022,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 16.0,
+                      "default": 13.0,
                       "description": "Theme property: sections/footer/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/footer/typography/font/size",
                       "label": "Size",
@@ -5064,7 +5064,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 13.714285850524902,
+                      "default": 10.0,
                       "description": "Theme property: sections/footer/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/footer/typography/smallFont/size",
                       "label": "Size",
@@ -5106,7 +5106,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 17.14285659790039,
+                      "default": 16.0,
                       "description": "Theme property: sections/footer/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/footer/typography/headingFont/size",
                       "label": "Size",
@@ -5190,7 +5190,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 11.428571701049805,
+                      "default": 10.0,
                       "description": "Theme property: sections/footer/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/footer/typography/glyphFont/size",
                       "label": "Size",
@@ -5287,98 +5287,98 @@
             {
               "children": [
                 {
-                  "default": "#171c25ff",
+                  "default": "#f4f6f8ff",
                   "description": "Theme property: sections/controls/colors/background. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/background",
                   "label": "Background",
                   "type": "color"
                 },
                 {
-                  "default": "#e5eaf2ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/controls/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/foreground",
                   "label": "Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/controls/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/surface",
                   "label": "Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#66b7ffff",
+                  "default": "#005fccff",
                   "description": "Theme property: sections/controls/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/accent",
                   "label": "Accent",
                   "type": "color"
                 },
                 {
-                  "default": "#fbbf24ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/controls/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/changed",
                   "label": "Changed",
                   "type": "color"
                 },
                 {
-                  "default": "#ff8080ff",
+                  "default": "#b42318ff",
                   "description": "Theme property: sections/controls/colors/error. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/error",
                   "label": "Error",
                   "type": "color"
                 },
                 {
-                  "default": "#354761ff",
+                  "default": "#dce6f0ff",
                   "description": "Theme property: sections/controls/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/hoverSurface",
                   "label": "Hover Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#303b4dff",
+                  "default": "#cbd5dfff",
                   "description": "Theme property: sections/controls/colors/line. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/line",
                   "label": "Line",
                   "type": "color"
                 },
                 {
-                  "default": "#929fb4ff",
+                  "default": "#546170ff",
                   "description": "Theme property: sections/controls/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/muted",
                   "label": "Muted",
                   "type": "color"
                 },
                 {
-                  "default": "#26394eff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/controls/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/selectedRow",
                   "label": "Selected Row",
                   "type": "color"
                 },
                 {
-                  "default": "#202b3aff",
+                  "default": "#e8eef5ff",
                   "description": "Theme property: sections/controls/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/hoveredRow",
                   "label": "Hovered Row",
                   "type": "color"
                 },
                 {
-                  "default": "#426389ff",
+                  "default": "#b8d8faff",
                   "description": "Theme property: sections/controls/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/selection",
                   "label": "Selection",
                   "type": "color"
                 },
                 {
-                  "default": "#2c4058ff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/controls/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/selectedOption",
                   "label": "Selected Option",
                   "type": "color"
                 },
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/controls/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/popupSurface",
                   "label": "Popup Surface",
@@ -5406,21 +5406,21 @@
                   "type": "color"
                 },
                 {
-                  "default": "#171c25ff",
+                  "default": "#292315ff",
                   "description": "Theme property: sections/controls/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/searchForeground",
                   "label": "Search Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#ffd166ff",
+                  "default": "#ffeda3ff",
                   "description": "Theme property: sections/controls/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/searchBackground",
                   "label": "Search Background",
                   "type": "color"
                 },
                 {
-                  "default": "#ffffffff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/controls/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/colors/selectionForeground",
                   "label": "Selection Foreground",
@@ -5445,7 +5445,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.28571319580078,
+                  "default": 29.28571319580078,
                   "description": "Theme property: sections/controls/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/rowHeight",
                   "label": "Row Height",
@@ -5495,7 +5495,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 2.0,
+                  "default": 1.0,
                   "description": "Theme property: sections/controls/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/focusWidth",
                   "label": "Focus Width",
@@ -5555,7 +5555,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.0,
+                  "default": 40.0,
                   "description": "Theme property: sections/controls/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/swatchWidth",
                   "label": "Swatch Width",
@@ -5655,7 +5655,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 50.28571319580078,
+                  "default": 22.0,
                   "description": "Theme property: sections/controls/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/treeRowHeight",
                   "label": "Tree Row Height",
@@ -5705,7 +5705,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 6.857142925262451,
+                  "default": 1.0,
                   "description": "Theme property: sections/controls/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/treeRowPadding",
                   "label": "Tree Row Padding",
@@ -5715,7 +5715,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 228.57142639160156,
+                  "default": 210.57142639160156,
                   "description": "Theme property: sections/controls/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/editorMinLeft",
                   "label": "Editor Min Left",
@@ -5725,7 +5725,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 0.4699999988079071,
+                  "default": 0.33000001311302185,
                   "description": "Theme property: sections/controls/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/editorFraction",
                   "label": "Editor Fraction",
@@ -5755,7 +5755,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 32.0,
+                  "default": 27.0,
                   "description": "Theme property: sections/controls/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/menuRowHeight",
                   "label": "Menu Row Height",
@@ -5765,7 +5765,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 8.0,
+                  "default": 6.0,
                   "description": "Theme property: sections/controls/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/controls/metrics/menuMaxRows",
                   "label": "Menu Max Rows",
@@ -5902,7 +5902,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 16.0,
+                      "default": 13.0,
                       "description": "Theme property: sections/controls/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/controls/typography/font/size",
                       "label": "Size",
@@ -5944,7 +5944,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 13.714285850524902,
+                      "default": 10.0,
                       "description": "Theme property: sections/controls/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/controls/typography/smallFont/size",
                       "label": "Size",
@@ -5986,7 +5986,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 17.14285659790039,
+                      "default": 16.0,
                       "description": "Theme property: sections/controls/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/controls/typography/headingFont/size",
                       "label": "Size",
@@ -6070,7 +6070,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 11.428571701049805,
+                      "default": 10.0,
                       "description": "Theme property: sections/controls/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/controls/typography/glyphFont/size",
                       "label": "Size",
@@ -6167,98 +6167,98 @@
             {
               "children": [
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/popups/colors/background. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/background",
                   "label": "Background",
                   "type": "color"
                 },
                 {
-                  "default": "#e5eaf2ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/popups/colors/foreground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/foreground",
                   "label": "Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#111720ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/popups/colors/surface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/surface",
                   "label": "Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#66b7ffff",
+                  "default": "#005fccff",
                   "description": "Theme property: sections/popups/colors/accent. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/accent",
                   "label": "Accent",
                   "type": "color"
                 },
                 {
-                  "default": "#fbbf24ff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/popups/colors/changed. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/changed",
                   "label": "Changed",
                   "type": "color"
                 },
                 {
-                  "default": "#ff8080ff",
+                  "default": "#b42318ff",
                   "description": "Theme property: sections/popups/colors/error. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/error",
                   "label": "Error",
                   "type": "color"
                 },
                 {
-                  "default": "#354761ff",
+                  "default": "#dce6f0ff",
                   "description": "Theme property: sections/popups/colors/hoverSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/hoverSurface",
                   "label": "Hover Surface",
                   "type": "color"
                 },
                 {
-                  "default": "#303b4dff",
+                  "default": "#cbd5dfff",
                   "description": "Theme property: sections/popups/colors/line. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/line",
                   "label": "Line",
                   "type": "color"
                 },
                 {
-                  "default": "#929fb4ff",
+                  "default": "#546170ff",
                   "description": "Theme property: sections/popups/colors/muted. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/muted",
                   "label": "Muted",
                   "type": "color"
                 },
                 {
-                  "default": "#26394eff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/popups/colors/selectedRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/selectedRow",
                   "label": "Selected Row",
                   "type": "color"
                 },
                 {
-                  "default": "#202b3aff",
+                  "default": "#e8eef5ff",
                   "description": "Theme property: sections/popups/colors/hoveredRow. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/hoveredRow",
                   "label": "Hovered Row",
                   "type": "color"
                 },
                 {
-                  "default": "#426389ff",
+                  "default": "#b8d8faff",
                   "description": "Theme property: sections/popups/colors/selection. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/selection",
                   "label": "Selection",
                   "type": "color"
                 },
                 {
-                  "default": "#2c4058ff",
+                  "default": "#dceafaff",
                   "description": "Theme property: sections/popups/colors/selectedOption. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/selectedOption",
                   "label": "Selected Option",
                   "type": "color"
                 },
                 {
-                  "default": "#263344ff",
+                  "default": "#ffffffff",
                   "description": "Theme property: sections/popups/colors/popupSurface. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/popupSurface",
                   "label": "Popup Surface",
@@ -6286,21 +6286,21 @@
                   "type": "color"
                 },
                 {
-                  "default": "#171c25ff",
+                  "default": "#292315ff",
                   "description": "Theme property: sections/popups/colors/searchForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/searchForeground",
                   "label": "Search Foreground",
                   "type": "color"
                 },
                 {
-                  "default": "#ffd166ff",
+                  "default": "#ffeda3ff",
                   "description": "Theme property: sections/popups/colors/searchBackground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/searchBackground",
                   "label": "Search Background",
                   "type": "color"
                 },
                 {
-                  "default": "#ffffffff",
+                  "default": "#20252bff",
                   "description": "Theme property: sections/popups/colors/selectionForeground. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/colors/selectionForeground",
                   "label": "Selection Foreground",
@@ -6325,7 +6325,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.28571319580078,
+                  "default": 29.28571319580078,
                   "description": "Theme property: sections/popups/metrics/rowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/rowHeight",
                   "label": "Row Height",
@@ -6375,7 +6375,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 2.0,
+                  "default": 1.0,
                   "description": "Theme property: sections/popups/metrics/focusWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/focusWidth",
                   "label": "Focus Width",
@@ -6435,7 +6435,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 34.0,
+                  "default": 40.0,
                   "description": "Theme property: sections/popups/metrics/swatchWidth. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/swatchWidth",
                   "label": "Swatch Width",
@@ -6535,7 +6535,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 50.28571319580078,
+                  "default": 22.0,
                   "description": "Theme property: sections/popups/metrics/treeRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/treeRowHeight",
                   "label": "Tree Row Height",
@@ -6585,7 +6585,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 6.857142925262451,
+                  "default": 1.0,
                   "description": "Theme property: sections/popups/metrics/treeRowPadding. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/treeRowPadding",
                   "label": "Tree Row Padding",
@@ -6595,7 +6595,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 228.57142639160156,
+                  "default": 210.57142639160156,
                   "description": "Theme property: sections/popups/metrics/editorMinLeft. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/editorMinLeft",
                   "label": "Editor Min Left",
@@ -6605,7 +6605,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 0.4699999988079071,
+                  "default": 0.33000001311302185,
                   "description": "Theme property: sections/popups/metrics/editorFraction. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/editorFraction",
                   "label": "Editor Fraction",
@@ -6635,7 +6635,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 32.0,
+                  "default": 27.0,
                   "description": "Theme property: sections/popups/metrics/menuRowHeight. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/menuRowHeight",
                   "label": "Menu Row Height",
@@ -6645,7 +6645,7 @@
                   "type": "number"
                 },
                 {
-                  "default": 8.0,
+                  "default": 6.0,
                   "description": "Theme property: sections/popups/metrics/menuMaxRows. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "sections/popups/metrics/menuMaxRows",
                   "label": "Menu Max Rows",
@@ -6782,7 +6782,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 16.0,
+                      "default": 13.0,
                       "description": "Theme property: sections/popups/typography/font/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/popups/typography/font/size",
                       "label": "Size",
@@ -6824,7 +6824,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 13.714285850524902,
+                      "default": 10.0,
                       "description": "Theme property: sections/popups/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/popups/typography/smallFont/size",
                       "label": "Size",
@@ -6866,7 +6866,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 17.14285659790039,
+                      "default": 16.0,
                       "description": "Theme property: sections/popups/typography/headingFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/popups/typography/headingFont/size",
                       "label": "Size",
@@ -6950,7 +6950,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 11.428571701049805,
+                      "default": 10.0,
                       "description": "Theme property: sections/popups/typography/glyphFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/popups/typography/glyphFont/size",
                       "label": "Size",

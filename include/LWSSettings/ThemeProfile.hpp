@@ -6,7 +6,7 @@ namespace LWSSettings
     using ThemeOverrides = Values;
     struct ThemeProfile
     {
-        LWSUI::ThemePreset preset = LWSUI::ThemePreset::Dark;
+        LWSUI::ThemePreset preset = LWSUI::ThemePreset::Light;
         ThemeOverrides overrides;
         bool operator==(const ThemeProfile&) const = default;
     };
