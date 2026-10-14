@@ -266,6 +266,12 @@ column, selection and hover rows, compact numeric rockers, radio markers, detail
 panel and footer actions. Drag the shared `SplitPanel` divider to resize the settings
 and description areas; double-click it or press Home while focused to restore the
 theme default. The ratio is retained while the view lives, without disk persistence.
+Description text and the location path share one scrollbar. The location stays
+at the bottom when both fit and follows the description when they overflow.
+The title and validation messages remain outside the scrolling content.
+Description and location text support selection and Copy without editing.
+Hover previews a setting or group. Leaving the tree restores the last setting
+selected by a row click or keyboard navigation, even after focus moves elsewhere.
 Footer actions wrap at narrow widths. Search reveals matching descendants without losing
 collapsed state. Up/Down and Tab navigate tree rows; Left/Right collapse or expand
 groups and change choices. Ctrl+F searches, Ctrl+S saves, Ctrl+Enter applies, and

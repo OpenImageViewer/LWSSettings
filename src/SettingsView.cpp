@@ -9,6 +9,94 @@
 
 namespace LWSSettings
 {
+    namespace
+    {
+        class DetailsText final : public LWSUI::TextBox
+        {
+          public:
+            DetailsText() : TextBox({}, LWSUI::TextBoxMode::Multiline)
+            {
+                SetReadOnly(true);
+                SetBorderless(true);
+                cursor = LWS::CursorShape::IBeam;
+            }
+
+          protected:
+            LWSUI::Size OnMeasure(LWSUI::Size available) override
+            {
+                const float padding = Style().textPadding;
+                const float width = std::max(1.f, available.width - 2 * padding);
+                const float height = Host() ? Host()->MeasureText(Text(), width, true, Font()).height
+                                            : Font().size * 1.4f;
+                return {available.width, height + 2 * padding};
+            }
+            bool OnInput(const LWSUI::Input& input) override
+            {
+                if (input.kind == LWSUI::InputKind::Wheel) return false;
+                return TextBox::OnInput(input);
+            }
+        };
+        class DetailsTree final : public LWSUI::TreeView
+        {
+          public:
+            explicit DetailsTree(std::function<void(LWSUI::Control*)> selected) : selected_(std::move(selected)) {}
+
+          protected:
+            bool OnPreviewInput(const LWSUI::Input& input) override
+            {
+                if (input.kind == LWSUI::InputKind::Down && input.button == LWS::MouseButton::Left)
+                    selected_(HitTest(input.x, input.y));
+                return TreeView::OnPreviewInput(input);
+            }
+            bool OnInput(const LWSUI::Input& input) override
+            {
+                const bool handled = TreeView::OnInput(input);
+                if (handled && input.kind == LWSUI::InputKind::KeyDown) selected_(nullptr);
+                return handled;
+            }
+
+          private:
+            std::function<void(LWSUI::Control*)> selected_;
+        };
+        class DetailsTreeScroll final : public LWSUI::ScrollView
+        {
+          public:
+            explicit DetailsTreeScroll(std::function<void()> leave) : leave_(std::move(leave)) {}
+
+          protected:
+            void OnPointerLeave() override { leave_(); }
+
+          private:
+            std::function<void()> leave_;
+        };
+        class DescriptionContent final : public LWSUI::Container
+        {
+          public:
+            DescriptionContent(std::unique_ptr<LWSUI::TextBox> body, std::unique_ptr<LWSUI::TextBox> location)
+                : body_(static_cast<LWSUI::TextBox&>(Add(std::move(body)))),
+                  location_(static_cast<LWSUI::TextBox&>(Add(std::move(location)))) {}
+
+          protected:
+            LWSUI::Size OnMeasure(LWSUI::Size available) override
+            {
+                const auto body = body_.Measure(available);
+                const auto location = location_.Measure(available);
+                const float gap = location_.Visible() ? body_.Style().padding : 0;
+                return {available.width, std::max(available.height, body.height + gap + location.height)};
+            }
+            void OnArrange() override
+            {
+                const auto b = Bounds();
+                const float bodyHeight = body_.DesiredSize().height;
+                body_.Arrange({b.x, b.y, b.width, bodyHeight});
+                const float locationHeight = location_.DesiredSize().height;
+                location_.Arrange({b.x, b.y + b.height - locationHeight, b.width, locationHeight});
+            }
+
+          private:
+            LWSUI::TextBox &body_, &location_;
+        };
+    }
     static std::string Lower(std::string text)
     {
         return LWSUI::FoldSearchText(std::move(text));
@@ -21,7 +109,7 @@ namespace LWSSettings
     }
     struct SettingsView::Binding
     {
-        std::string id, search;
+        std::string id, search, path;
         LWSUI::TreeView::Row* row;
         LWSUI::Label* label;
         LWSUI::Control* editor;
@@ -159,7 +247,7 @@ namespace LWSSettings
             groupButtons_[i]->SetHighlightPattern("");
             clicks_.push_back(groupButtons_[i]->OnClick.Connect([this, i] { SetGroupsExpanded(i == 0); }));
         }
-        treeScroll_ = &Emplace<LWSUI::ScrollView>();
+        treeScroll_ = &Emplace<DetailsTreeScroll>([this] { RestoreSelectedDescription(); });
         treeScroll_->overlayScrollBar = true;
         treeScroll_->SetStyle(theme_.tree);
         descriptionScroll_ = &Emplace<LWSUI::ScrollView>();
@@ -168,23 +256,21 @@ namespace LWSSettings
         descriptionTitle_->fontRole = FontRole::Heading;
         descriptionTitle_->SetStyle(theme_.description);
         descriptionTitle_->SetForeground(theme_.description.accent);
-        auto description = std::make_unique<LWSUI::Label>();
-        description->SetStyle(theme_.description);
+        auto description = std::make_unique<DetailsText>();
+        auto descriptionStyle = theme_.description;
+        descriptionStyle.textPadding = descriptionStyle.labelPadding;
+        description->SetStyle(descriptionStyle);
         description->SetForeground(theme_.description.muted);
-        description->wrap = true;
         description_ = description.get();
-        descriptionScroll_->SetContent(std::move(description));
         status_ = &Emplace<LWSUI::Label>();
         status_->SetStyle(theme_.description);
         status_->fontRole = FontRole::Small;
-        locationScroll_ = &Emplace<LWSUI::ScrollView>();
-        auto location = std::make_unique<LWSUI::Label>();
+        auto location = std::make_unique<DetailsText>();
         location_ = location.get();
         location_->fontRole = FontRole::Small;
-        location_->wrap = true;
-        locationScroll_->SetContent(std::move(location));
+        descriptionScroll_->SetContent(std::make_unique<DescriptionContent>(std::move(description), std::move(location)));
         StyleLocation();
-        locationScroll_->SetVisible(false);
+        location_->SetVisible(false);
         actions_ = &Emplace<LWSUI::FlowPanel>();
         actions_->alignEnd = true;
         actions_->firstLeading = true;
@@ -298,10 +384,7 @@ namespace LWSSettings
         treePanel_ = treePanel.get();
         auto details = std::make_unique<LWSUI::DockPanel>();
         details->AddDocked(take(descriptionTitle_), LWSUI::Dock::Top);
-        auto metadata = std::make_unique<LWSUI::DockPanel>();
-        metadata->AddDocked(take(status_), LWSUI::Dock::Top);
-        metadata->AddDocked(take(locationScroll_), LWSUI::Dock::Fill);
-        details->AddDocked(std::move(metadata), LWSUI::Dock::Bottom, 0, .5f);
+        details->AddDocked(take(status_), LWSUI::Dock::Bottom);
         details->AddDocked(take(descriptionScroll_), LWSUI::Dock::Fill);
         auto descriptionPanel = std::make_unique<LWSUI::Panel>(std::move(details));
         descriptionPanel_ = descriptionPanel.get();
@@ -380,7 +463,9 @@ namespace LWSSettings
         descriptionScroll_->SetStyle(theme_.description);
         descriptionTitle_->SetStyle(theme_.description);
         descriptionTitle_->SetForeground(theme_.description.accent);
-        description_->SetStyle(theme_.description);
+        auto descriptionStyle = theme_.description;
+        descriptionStyle.textPadding = descriptionStyle.labelPadding;
+        description_->SetStyle(descriptionStyle);
         description_->SetForeground(theme_.description.muted);
         status_->SetStyle(theme_.description);
         StyleLocation();
@@ -507,19 +592,42 @@ namespace LWSSettings
         style.smallFont.weight = 400;
         style.smallFont.italic = false;
         style.rowHeight = 0;
+        style.textPadding = style.labelPadding;
         style.accent = style.muted;
-        locationScroll_->SetStyle(style);
         location_->SetStyle(style);
         location_->SetForeground(style.muted);
     }
     void SettingsView::Describe(const std::string& title, const std::string& path, const std::string& text)
     {
+        const std::string location = path.empty() ? std::string{} : "Location: " + path;
+        if (descriptionTitle_->Text() == title && description_->Text() == text && location_->Text() == location)
+            return;
         descriptionTitle_->SetText(title);
         description_->SetText(text);
-        location_->SetText(path.empty() ? std::string{} : "Location: " + path);
-        locationScroll_->SetVisible(!path.empty());
+        location_->SetText(location);
+        location_->SetVisible(!path.empty());
         descriptionScroll_->SetOffset(0);
-        locationScroll_->SetOffset(0);
+        descriptionScroll_->Invalidate(true);
+    }
+    void SettingsView::RememberSetting(LWSUI::Control* clicked)
+    {
+        for (const auto& binding : bindings_)
+        {
+            bool selected = !clicked && Host() && Host()->HasFocusWithin(*binding->row);
+            for (auto* control = clicked; control; control = control->Parent())
+                selected |= control == binding->row;
+            if (selected)
+            {
+                selectedSetting_ = binding->id;
+                break;
+            }
+        }
+    }
+    void SettingsView::RestoreSelectedDescription()
+    {
+        const auto* binding = FindBinding(selectedSetting_);
+        const auto* setting = document_.Find(selectedSetting_);
+        if (binding && setting) Describe(setting->label, binding->path, setting->description);
     }
     void SettingsView::Rebuild()
     {
@@ -528,11 +636,11 @@ namespace LWSSettings
         descriptionTitle_->SetText("Setting details");
         description_->SetText("");
         location_->SetText("");
-        locationScroll_->SetVisible(false);
+        location_->SetVisible(false);
         bindings_.clear();
         groups_.clear();
         hovers_.clear();
-        auto tree = std::make_unique<LWSUI::TreeView>();
+        auto tree = std::make_unique<DetailsTree>([this](LWSUI::Control* clicked) { RememberSetting(clicked); });
         tree->SetStyle(theme_.tree);
         tree->spacing = theme_.tree.spacing;
         tree->SetHighlightPattern(filter_);
@@ -560,6 +668,7 @@ namespace LWSSettings
                 auto ownedBinding = std::make_unique<Binding>();
                 auto* binding = ownedBinding.get();
                 binding->id = setting.id;
+                binding->path = path;
                 binding->search = Lower(ancestorSearch + " " + breadcrumb + " " + setting.description + " " + setting.id);
                 auto label = std::make_unique<LWSUI::Label>(setting.label);
                 binding->label = label.get();
@@ -617,8 +726,11 @@ namespace LWSSettings
                 reset.SetHighlightPattern("");
                 binding->connections.Connect(reset.OnClick, [this, id = setting.id] { Report(document_.Reset(id)); });
                 hovers_.push_back(
-                    row.OnHover.Connect([this, title = setting.label, path, text = setting.description]
-                                         { Describe(title, path, text); }));
+                    row.OnHover.Connect([this, binding, title = setting.label, path, text = setting.description]
+                    {
+                        if (Host() && Host()->HasFocusWithin(*binding->row)) selectedSetting_ = binding->id;
+                        Describe(title, path, text);
+                    }));
                 binding->refresh(*document_.WorkingValue(setting.id));
                 StyleChanged(*binding);
                 bindings_.push_back(std::move(ownedBinding));
@@ -629,6 +741,8 @@ namespace LWSSettings
         empty_ = &tree->Emplace<LWSUI::Label>("No matching settings");
         empty_->SetHighlightPattern("");
         treeScroll_->SetContent(std::move(tree));
+        if (!FindBinding(selectedSetting_)) selectedSetting_.clear();
+        else RestoreSelectedDescription();
         ClearStatus();
         UpdateFilter();
         Invalidate(true);

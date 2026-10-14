@@ -662,7 +662,7 @@
                   "type": "text"
                 },
                 {
-                  "default": 10.0,
+                  "default": 12.0,
                   "description": "Theme property: base/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                   "id": "base/typography/smallFont/size",
                   "label": "Size",
@@ -1544,7 +1544,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 10.0,
+                      "default": 12.0,
                       "description": "Theme property: sections/header/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/header/typography/smallFont/size",
                       "label": "Size",
@@ -2424,7 +2424,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 10.0,
+                      "default": 12.0,
                       "description": "Theme property: sections/search/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/search/typography/smallFont/size",
                       "label": "Size",
@@ -3304,7 +3304,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 10.0,
+                      "default": 12.0,
                       "description": "Theme property: sections/tree/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/tree/typography/smallFont/size",
                       "label": "Size",
@@ -4184,7 +4184,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 10.0,
+                      "default": 12.0,
                       "description": "Theme property: sections/description/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/description/typography/smallFont/size",
                       "label": "Size",
@@ -5064,7 +5064,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 10.0,
+                      "default": 12.0,
                       "description": "Theme property: sections/footer/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/footer/typography/smallFont/size",
                       "label": "Size",
@@ -5944,7 +5944,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 10.0,
+                      "default": 12.0,
                       "description": "Theme property: sections/controls/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/controls/typography/smallFont/size",
                       "label": "Size",
@@ -6824,7 +6824,7 @@
                       "type": "text"
                     },
                     {
-                      "default": 10.0,
+                      "default": 12.0,
                       "description": "Theme property: sections/popups/typography/smallFont/size. Editing creates an override; Use inherited restores the base or default value.",
                       "id": "sections/popups/typography/smallFont/size",
                       "label": "Size",

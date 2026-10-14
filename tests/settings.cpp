@@ -3012,7 +3012,7 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
     for (int i = 0; i < 24; ++i)
     {
         groupName += " / Long group name";
-        bodyText += "A longer description that can scroll independently. ";
+        bodyText += "A longer description that shares scrolling with its location. ";
     }
     schema["children"][0]["label"] = groupName;
     schema["children"][0]["children"][1]["description"] = bodyText;
@@ -3021,20 +3021,19 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
     described->Parent()->OnHover.Raise();
     host.Update();
     const auto pathText = "Location: " + groupName;
-    LWSUI::Label* location = nullptr;
-    LWSUI::Label* body = nullptr;
-    for (auto* label : Controls<LWSUI::Label>(settingsView))
+    LWSUI::TextBox* location = nullptr;
+    LWSUI::TextBox* body = nullptr;
+    for (auto* label : Controls<LWSUI::TextBox>(settingsView))
     {
         if (label->Text() == pathText) location = label;
         if (label->Text() == bodyText) body = label;
     }
     REQUIRE(location);
     REQUIRE(body); // The body contains description text only, with no duplicate breadcrumb.
-    auto* locationScroll = dynamic_cast<LWSUI::ScrollView*>(location->Parent());
-    auto* bodyScroll = dynamic_cast<LWSUI::ScrollView*>(body->Parent());
-    REQUIRE(locationScroll);
+    REQUIRE(location->Parent() == body->Parent());
+    auto* bodyScroll = dynamic_cast<LWSUI::ScrollView*>(body->Parent()->Parent());
     REQUIRE(bodyScroll);
-    REQUIRE(location->wrap);
+    REQUIRE(location->Mode() == LWSUI::TextBoxMode::Multiline);
     REQUIRE(location->Font().size <= body->Font().size * .85f);
     REQUIRE(location->Font().weight == 400);
     REQUIRE(location->Foreground() == locationTheme.description.muted);
@@ -3049,17 +3048,15 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
     for (float width : {820.f, 480.f})
     {
         Layout(settingsView, width, 680);
-        const float bottom = locationScroll->Bounds().y + locationScroll->Bounds().height;
-        REQUIRE(locationScroll->Bounds().height > 0);
-        REQUIRE(locationScroll->Bounds().y >= bodyScroll->Bounds().y + bodyScroll->Bounds().height);
-        REQUIRE(locationScroll->Bounds().height <= bodyScroll->Bounds().height + .01f);
-        REQUIRE(location->DesiredSize().height > locationScroll->Bounds().height);
+        const float bottom = bodyScroll->Bounds().y + bodyScroll->Bounds().height;
+        REQUIRE(bodyScroll->Bounds().height > 0);
+        REQUIRE(location->Bounds().y >= body->Bounds().y + body->Bounds().height);
+        REQUIRE(bodyScroll->Content()->Bounds().height > bodyScroll->Bounds().height);
+        REQUIRE(Controls<LWSUI::ScrollView>(*bodyScroll).size() == 1);
         bodyScroll->SetOffset(10000);
-        locationScroll->SetOffset(10000);
         Layout(settingsView, width, 680);
         REQUIRE(bodyScroll->Offset() > 0);
-        REQUIRE(locationScroll->Offset() > 0);
-        REQUIRE(locationScroll->Bounds().y + locationScroll->Bounds().height == Catch::Approx(bottom));
+        REQUIRE(location->Bounds().y + location->Bounds().height == Catch::Approx(bottom));
         settingsView.Report(std::unexpected(Error{"test", "Validation message"}));
         Layout(settingsView, width, 680);
         LWSUI::Label* status = nullptr;
@@ -3067,19 +3064,214 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
             if (label->Text() == "test: Validation message") status = label;
         REQUIRE(status);
         REQUIRE(status->Bounds().y >= bodyScroll->Bounds().y + bodyScroll->Bounds().height);
-        REQUIRE(status->Bounds().y + status->Bounds().height <= locationScroll->Bounds().y + .01f);
-        REQUIRE(locationScroll->Bounds().y + locationScroll->Bounds().height == Catch::Approx(bottom));
+        REQUIRE(status->Bounds().y + status->Bounds().height == Catch::Approx(bottom));
         for (auto* button : Controls<LWSUI::Button>(settingsView))
             if (button->Text() == "Save") REQUIRE(bottom < button->Bounds().y);
         settingsView.Report({});
     }
+    schema["children"][0]["label"] = "General";
+    schema["children"][0]["children"][1]["description"] = "Short description.";
+    REQUIRE(SettingsStorage::LoadTemplate(document, schema));
+    FindControl<LWSUI::NumericEdit<int64_t>>(settingsView)->Parent()->OnHover.Raise();
+    for (float height : {680.f, 420.f})
+    {
+        bodyScroll->SetOffset(10000);
+        Layout(settingsView, 820, height);
+        REQUIRE(bodyScroll->Offset() == 0);
+        REQUIRE(location->Visible());
+        REQUIRE(location->Bounds().y + location->Bounds().height ==
+                Catch::Approx(bodyScroll->Bounds().y + bodyScroll->Bounds().height));
+        REQUIRE(location->Bounds().y >= body->Bounds().y + body->Bounds().height);
+        REQUIRE_FALSE(Controls<LWSUI::ScrollBar>(*bodyScroll).front()->Visible());
+    }
     REQUIRE(SettingsStorage::LoadTemplate(document, Template()));
     REQUIRE(location->Text().empty());
-    REQUIRE_FALSE(locationScroll->Visible());
+    REQUIRE_FALSE(location->Visible());
     FindControl<LWSUI::TreeView::Branch>(settingsView)->OnHover.Raise();
     REQUIRE(location->Text().empty()); // Root groups have no parent location.
-    REQUIRE_FALSE(locationScroll->Visible());
+    REQUIRE_FALSE(location->Visible());
     REQUIRE(errors.empty());
+}
+TEST_CASE("Details copy read-only text and restore the remembered setting outside the tree", "[viewer][details]")
+{
+    TestPlatform platform;
+    LWS::Window window(platform);
+    REQUIRE(window.Create({.clientSize = {820, 680}, .visible = true}) == LWS::Result::Success);
+    WaitForConfiguration(window);
+    LWSUI::UIHost host(window);
+    SettingsDocument document;
+    auto schema = Template();
+    const std::string first = "café 日本語 description";
+    const std::string second = "Count description";
+    schema["children"][0]["children"][0]["description"] = first;
+    schema["children"][0]["children"][1]["description"] = second;
+    REQUIRE(SettingsStorage::LoadTemplate(document, schema));
+    auto root = std::make_unique<SettingsView>(document);
+    auto& view = *root;
+    host.SetRoot(std::move(root));
+    host.Update();
+    auto rows = Controls<LWSUI::TreeView::Row>(view);
+    REQUIRE(rows.size() == 8);
+    auto* search = FindControl<LWSUI::TextBox>(view);
+    auto point = [](LWSUI::Control& control)
+    {
+        const auto b = control.Bounds();
+        return std::pair{b.x + 10, b.y + b.height / 2};
+    };
+    auto move = [&](LWSUI::Control& control)
+    {
+        const auto [x, y] = point(control);
+        host.Route({.kind = Kind::Move, .x = x, .y = y});
+        host.Update();
+    };
+    auto leave = [&]
+    {
+        host.Route({.kind = Kind::Move, .x = -10, .y = -10});
+        host.Update();
+    };
+    auto click = [&](LWSUI::Control& control)
+    {
+        const auto [x, y] = point(control);
+        host.Route({.kind = Kind::Down, .x = x, .y = y});
+        host.Route({.kind = Kind::Up, .x = x, .y = y});
+        host.Update();
+    };
+    auto findText = [&](const std::string& text) -> LWSUI::TextBox*
+    {
+        for (auto* control : Controls<LWSUI::TextBox>(view))
+            if (control->Text() == text) return control;
+        return nullptr;
+    };
+    move(*rows[0]);
+    auto* body = findText(first);
+    auto* location = findText("Location: Group");
+    REQUIRE(body);
+    REQUIRE(location);
+    auto* scroll = dynamic_cast<LWSUI::ScrollView*>(body->Parent()->Parent());
+    REQUIRE(scroll);
+    leave();
+    REQUIRE(body->Text() == first);
+    click(*FindControl<LWSUI::Label>(*rows[0]));
+    move(*rows[1]);
+    REQUIRE(body->Text() == second);
+    leave();
+    REQUIRE(body->Text() == first);
+    REQUIRE(host.Focus(search));
+    move(*rows[1]);
+    move(*body);
+    REQUIRE(body->Text() == first);
+    click(*rows[0]);
+    click(*rows[1]);
+    move(*rows[0]);
+    leave();
+    REQUIRE(body->Text() == second);
+    click(rows[0]->EditorControl());
+    move(*rows[1]);
+    leave();
+    REQUIRE(body->Text() == first);
+    REQUIRE(host.Focus(rows[0]));
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Down}));
+    move(*rows[0]);
+    leave();
+    REQUIRE(body->Text() == second);
+    REQUIRE(host.Focus(rows[0]));
+    leave();
+    REQUIRE(body->Text() == first);
+
+#ifdef _WIN32
+    auto clipboard = [&]
+    {
+        std::string text;
+        bool called = false;
+        LWS::RequestClipboardText(window, [&](auto result, std::string value)
+        {
+            REQUIRE(result == LWS::ClipboardResult::Success);
+            text = std::move(value);
+            called = true;
+        });
+        REQUIRE(called);
+        return text;
+    };
+    for (auto* text : {body, location})
+    {
+        const auto original = text->Text();
+        REQUIRE(host.Focus(text));
+        KeyPress(*text, Key::A, false, true);
+        move(*text);
+        leave();
+        KeyPress(*text, Key::C, false, true);
+        REQUIRE(clipboard() == original);
+        REQUIRE(text->Dispatch({.kind = Kind::Text, .text = "cannot edit"}));
+        for (auto key : {Key::Backspace, Key::Delete}) KeyPress(*text, key);
+        KeyPress(*text, Key::X, false, true);
+        KeyPress(*text, Key::V, false, true);
+        REQUIRE(text->Text() == original);
+        KeyPress(*text, Key::A, false, true);
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::F10, .shift = true}));
+        REQUIRE(host.HasContextMenu());
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter}));
+        host.Update();
+        REQUIRE(clipboard() == original);
+    }
+    REQUIRE(host.Focus(body));
+    KeyPress(*body, Key::Home, false, true);
+    KeyPress(*body, Key::Right, true);
+    KeyPress(*body, Key::C, false, true);
+    REQUIRE(clipboard() == "c");
+    // Pointer movement must preserve the existing selection.
+    leave();
+    KeyPress(*body, Key::C, false, true);
+    REQUIRE(clipboard() == "c");
+    const auto b = body->Bounds();
+    const float x = b.x + body->Style().textPadding;
+    const float y = b.y + body->Style().textPadding + body->Font().size / 2;
+    REQUIRE(host.Route({.kind = Kind::Down, .x = x, .y = y}));
+    REQUIRE(host.Route({.kind = Kind::Move, .x = x + 25, .y = y}));
+    REQUIRE(host.Route({.kind = Kind::Up, .x = x + 25, .y = y}));
+    KeyPress(*body, Key::C, false, true);
+    const auto dragged = clipboard();
+    REQUIRE_FALSE(dragged.empty());
+    REQUIRE(first.starts_with(dragged));
+#endif
+    REQUIRE_FALSE(document.IsDirty());
+    auto* branch = FindControl<LWSUI::TreeView::Branch>(view);
+    branch->SetExpanded(false);
+    leave();
+    REQUIRE(body->Text() == first);
+    branch->SetExpanded(true);
+    view.SetFilter("Count");
+    host.Update();
+    leave();
+    REQUIRE(body->Text() == first);
+    view.SetFilter("");
+    host.Update();
+    schema["children"][0]["children"][0]["description"] = "Updated description";
+    REQUIRE(SettingsStorage::LoadTemplate(document, schema));
+    host.Update();
+    leave();
+    REQUIRE(body->Text() == "Updated description");
+    schema["children"][0]["children"].erase(0);
+    REQUIRE(SettingsStorage::LoadTemplate(document, schema));
+    host.Update();
+    rows = Controls<LWSUI::TreeView::Row>(view);
+    move(*rows[0]);
+    leave();
+    REQUIRE(body->Text() == second);
+    click(*rows[0]);
+    std::string longText;
+    for (int i = 0; i < 100; ++i) longText += "A long wrapped description. ";
+    schema["children"][0]["children"][0]["description"] = longText;
+    REQUIRE(SettingsStorage::LoadTemplate(document, schema));
+    host.Update();
+    REQUIRE(body->Text() == longText);
+    scroll->SetOffset(0);
+    const auto viewport = scroll->Bounds();
+    host.Route({.kind = Kind::Wheel, .x = viewport.x + 10, .y = viewport.y + 10, .wheel = -1});
+    host.Update();
+    REQUIRE(scroll->Offset() > 0);
+    size_t visibleBars = 0;
+    for (auto* bar : Controls<LWSUI::ScrollBar>(*scroll)) visibleBars += bar->Visible();
+    REQUIRE(visibleBars == 1);
 }
 TEST_CASE("F4 opens and cancels the file picker while its text editor is focused", "[viewer][dialog]")
 {

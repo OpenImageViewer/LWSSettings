@@ -69,6 +69,8 @@ namespace LWSSettings
         void UpdateGroupActions();
         void Describe(const std::string& title, const std::string& path, const std::string& text);
         void StyleLocation();
+        void RememberSetting(LWSUI::Control* clicked);
+        void RestoreSelectedDescription();
         void UpdateStatus();
         void ClearStatus();
         SettingsDocument& document_;
@@ -94,12 +96,11 @@ namespace LWSSettings
         LWSUI::ScrollView* treeScroll_;
         LWSUI::TreeView* tree_;
         LWSUI::ScrollView* descriptionScroll_;
-        LWSUI::Label* description_;
-        LWSUI::ScrollView* locationScroll_;
-        LWSUI::Label* location_;
+        LWSUI::TextBox* description_;
+        LWSUI::TextBox* location_;
         LWSUI::Label* status_;
         LWSUI::FlowPanel* actions_;
-        std::string filter_, validation_, operationError_, information_;
+        std::string filter_, validation_, operationError_, information_, selectedSetting_;
         // Sorted by ID for lookup; visual order belongs to the control tree.
         // Sorting unique_ptrs preserves the addresses captured by editor callbacks.
         std::vector<std::unique_ptr<Binding>> bindings_;
