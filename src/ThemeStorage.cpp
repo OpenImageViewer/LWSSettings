@@ -9,37 +9,8 @@ namespace LWSSettings
     namespace
     {
         using Json = nlohmann::json;
-        struct Invalid
-        {
-            Error error;
-        };
-        [[noreturn]] void Reject(std::string path, std::string message)
-        {
-            throw Invalid{{std::move(path), std::move(message)}};
-        }
-        Value DecodeValue(const Json& j, const ThemeField& field)
-        {
-            if (std::holds_alternative<ColorDefinition>(field.definition.specification))
-            {
-                auto color = Detail::DecodeColor(j, "Invalid color");
-                if (!color)
-                    Reject(field.path, color.error());
-                return *color;
-            }
-            if (j.is_boolean())
-                return j.get<bool>();
-            if (j.is_number_integer())
-            {
-                if (j.is_number_unsigned() && j.get<uint64_t>() > uint64_t(INT64_MAX))
-                    Reject(field.path, "Integer exceeds int64 range");
-                return j.get<int64_t>();
-            }
-            if (j.is_number_float())
-                return j.get<double>();
-            if (j.is_string())
-                return j.get<std::string>();
-            Reject(field.path, "Expected a scalar theme value");
-        }
+        using Detail::Invalid;
+        using Detail::Reject;
         bool IsGroup(std::string_view path)
         {
             const std::string prefix = std::string(path) + "/";
@@ -59,7 +30,7 @@ namespace LWSSettings
                 std::string child = path.empty() ? key : path + "/" + key;
                 if (const auto* field = ThemeFields::Find(child))
                 {
-                    auto checked = Validate(field->definition, DecodeValue(j, *field));
+                    auto checked = Validate(field->definition, Detail::DecodeValue(j, field->definition, false));
                     if (!checked)
                         throw Invalid{checked.error()};
                     values.emplace(child, std::move(*checked));
@@ -84,6 +55,7 @@ namespace LWSSettings
             else
             {
                 auto& setting = std::get<SettingDefinition>(node.content);
+                if (!setting.visibleInEditor) j["visibleInEditor"] = false;
                 j["default"] = Detail::EncodeValue(setting.DefaultValue());
                 std::visit(
                     [&](const auto& spec)
@@ -154,23 +126,15 @@ namespace LWSSettings
     }
     std::expected<ThemeOverrides, Error> ThemeStorage::LoadOverridesFile(const std::filesystem::path& path)
     {
-        try
-        {
-            std::ifstream file(path, std::ios::binary);
-            if (!file)
-                return std::unexpected(Error{path.string(), "Cannot open theme file"});
-            return DecodeOverrides(Json::parse(file));
-        }
-        catch (const std::exception& e)
-        {
-            return std::unexpected(Error{path.string(), e.what()});
-        }
+        auto json = Detail::ReadJsonFile(path);
+        if (!json) return std::unexpected(json.error());
+        return DecodeOverrides(*json);
     }
     std::expected<SettingsTheme, Error> ThemeStorage::LoadFile(const std::filesystem::path& path)
     {
-        auto profile = LoadProfileFile(path);
-        if (!profile) return std::unexpected(profile.error());
-        return ThemeFields::Resolve(profile->overrides, profile->preset);
+        auto json = Detail::ReadJsonFile(path);
+        if (!json) return std::unexpected(json.error());
+        return Decode(*json);
     }
     Status ThemeStorage::SaveOverridesFile(const std::filesystem::path& path, const ThemeOverrides& values)
     {
@@ -192,10 +156,10 @@ namespace LWSSettings
         ThemeProfile profile;
         if (fields.is_object() && fields.contains("preset"))
         {
-            if (fields["preset"] == "light") profile.preset = LWSUI::ThemePreset::Light;
-            else if (fields["preset"] == "warm") profile.preset = LWSUI::ThemePreset::Warm;
-            else if (fields["preset"] == "dark") profile.preset = LWSUI::ThemePreset::Dark;
-            else return std::unexpected(Error{"preset", "Unknown theme preset"});
+            if (!fields["preset"].is_string()) return std::unexpected(Error{"preset", "Unknown theme preset"});
+            auto preset = LWSUI::ParseThemePreset(fields["preset"].get_ref<const std::string&>());
+            if (!preset) return std::unexpected(Error{"preset", "Unknown theme preset"});
+            profile.preset = *preset;
             fields.erase("preset");
         }
         auto values = DecodeOverrides(fields);
@@ -211,13 +175,9 @@ namespace LWSSettings
     }
     std::expected<ThemeProfile, Error> ThemeStorage::LoadProfileFile(const std::filesystem::path& path)
     {
-        try
-        {
-            std::ifstream file(path, std::ios::binary);
-            if (!file) return std::unexpected(Error{path.string(), "Cannot open theme file"});
-            return DecodeProfile(Json::parse(file));
-        }
-        catch (const std::exception& e) { return std::unexpected(Error{path.string(), e.what()}); }
+        auto json = Detail::ReadJsonFile(path);
+        if (!json) return std::unexpected(json.error());
+        return DecodeProfile(*json);
     }
     Status ThemeStorage::SaveProfileFile(const std::filesystem::path& path, const ThemeProfile& profile)
     {

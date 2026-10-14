@@ -24,6 +24,7 @@ namespace LWSSettings
                               bool showRevert = false, bool collapseGroups = false);
         ~SettingsView();
         void SetFilter(std::string text);
+        std::string GetFilter() const { return search_->Text(); }
         void SetValueFilter(SettingValueFilter filter);
         SettingValueFilter GetValueFilter() const { return valueFilter_; }
         void SetIcon(LWS::BitmapSharedPtr icon);
@@ -60,6 +61,8 @@ namespace LWSSettings
         void Refresh(const Change& change);
         void StyleChanged(Binding&);
         void ReloadValues();
+        enum class Command { Save, Apply, Reset, ResetAll, Cancel, Revert };
+        void Execute(Command command);
         Status SaveChanges();
         void UpdateFilter();
         void RequestFilterUpdate();
@@ -100,6 +103,7 @@ namespace LWSSettings
         LWSUI::TextBox* location_;
         LWSUI::Label* status_;
         LWSUI::FlowPanel* actions_;
+        std::vector<LWSUI::Button*> primaryActions_;
         std::string filter_, validation_, operationError_, information_, selectedSetting_;
         // Sorted by ID for lookup; visual order belongs to the control tree.
         // Sorting unique_ptrs preserves the addresses captured by editor callbacks.
@@ -116,7 +120,7 @@ namespace LWSSettings
         LWSUI::Event<void(const Change&)>::Connection changeConnection_;
         LWSUI::Event<void(const std::string&, EditPhase, ChangeOrigin)>::Connection finishedConnection_;
         LWSUI::Event<void(const Error&)>::Connection errorConnection_;
-        LWSUI::Event<void()>::Connection reloadConnection_, valuesReloadConnection_, persistenceConnection_;
+        LWSUI::Event<void()>::Connection reloadConnection_, valuesReloadConnection_, persistenceConnection_, leaveConnection_;
         LWSUI::Event<void(const std::string&)>::Connection refreshConnection_;
     };
 }  // namespace LWSSettings

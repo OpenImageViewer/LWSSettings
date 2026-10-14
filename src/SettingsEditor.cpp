@@ -28,6 +28,7 @@ namespace LWSSettings
                 errorConnection_ = {};
                 minimumConnection_ = {};
                 minimumPending_ = false;
+                if (view_) { initialValueFilter_ = view_->GetValueFilter(); filter_ = view_->GetFilter(); }
                 host_.reset();
                 listener_ = {};
                 window_.reset();
@@ -161,7 +162,7 @@ namespace LWSSettings
     }
     void SettingsEditor::SetValueFilter(SettingValueFilter filter)
     {
-        if (view_) view_->SetValueFilter(filter);
+        if (view_) { view_->SetValueFilter(filter); initialValueFilter_ = view_->GetValueFilter(); }
         else initialValueFilter_ = filter;
     }
     SettingValueFilter SettingsEditor::GetValueFilter() const

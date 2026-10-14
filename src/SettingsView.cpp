@@ -1,5 +1,6 @@
 #include <LWSSettings/SettingsView.hpp>
 #include <LWSUI/UIHost.hpp>
+#include <LWSUI/ScopedFlag.hpp>
 #include "SettingsIcon.hpp"
 #include "SettingsHeader.hpp"
 #include <memory>
@@ -11,31 +12,6 @@ namespace LWSSettings
 {
     namespace
     {
-        class DetailsText final : public LWSUI::TextBox
-        {
-          public:
-            DetailsText() : TextBox({}, LWSUI::TextBoxMode::Multiline)
-            {
-                SetReadOnly(true);
-                SetBorderless(true);
-                cursor = LWS::CursorShape::IBeam;
-            }
-
-          protected:
-            LWSUI::Size OnMeasure(LWSUI::Size available) override
-            {
-                const float padding = Style().textPadding;
-                const float width = std::max(1.f, available.width - 2 * padding);
-                const float height = Host() ? Host()->MeasureText(Text(), width, true, Font()).height
-                                            : Font().size * 1.4f;
-                return {available.width, height + 2 * padding};
-            }
-            bool OnInput(const LWSUI::Input& input) override
-            {
-                if (input.kind == LWSUI::InputKind::Wheel) return false;
-                return TextBox::OnInput(input);
-            }
-        };
         class DetailsTree final : public LWSUI::TreeView
         {
           public:
@@ -57,17 +33,6 @@ namespace LWSSettings
 
           private:
             std::function<void(LWSUI::Control*)> selected_;
-        };
-        class DetailsTreeScroll final : public LWSUI::ScrollView
-        {
-          public:
-            explicit DetailsTreeScroll(std::function<void()> leave) : leave_(std::move(leave)) {}
-
-          protected:
-            void OnPointerLeave() override { leave_(); }
-
-          private:
-            std::function<void()> leave_;
         };
         class DescriptionContent final : public LWSUI::Container
         {
@@ -247,7 +212,8 @@ namespace LWSSettings
             groupButtons_[i]->SetHighlightPattern("");
             clicks_.push_back(groupButtons_[i]->OnClick.Connect([this, i] { SetGroupsExpanded(i == 0); }));
         }
-        treeScroll_ = &Emplace<DetailsTreeScroll>([this] { RestoreSelectedDescription(); });
+        treeScroll_ = &Emplace<LWSUI::ScrollView>();
+        leaveConnection_ = treeScroll_->OnLeave.Connect([this] { RestoreSelectedDescription(); });
         treeScroll_->overlayScrollBar = true;
         treeScroll_->SetStyle(theme_.tree);
         descriptionScroll_ = &Emplace<LWSUI::ScrollView>();
@@ -256,7 +222,11 @@ namespace LWSSettings
         descriptionTitle_->fontRole = FontRole::Heading;
         descriptionTitle_->SetStyle(theme_.description);
         descriptionTitle_->SetForeground(theme_.description.accent);
-        auto description = std::make_unique<DetailsText>();
+        auto description = std::make_unique<LWSUI::TextBox>("", LWSUI::TextBoxMode::Multiline);
+        description->sizeToContent = true;
+        description->SetReadOnly(true);
+        description->SetBorderless(true);
+        description->cursor = LWS::CursorShape::IBeam;
         auto descriptionStyle = theme_.description;
         descriptionStyle.textPadding = descriptionStyle.labelPadding;
         description->SetStyle(descriptionStyle);
@@ -265,7 +235,11 @@ namespace LWSSettings
         status_ = &Emplace<LWSUI::Label>();
         status_->SetStyle(theme_.description);
         status_->fontRole = FontRole::Small;
-        auto location = std::make_unique<DetailsText>();
+        auto location = std::make_unique<LWSUI::TextBox>("", LWSUI::TextBoxMode::Multiline);
+        location->sizeToContent = true;
+        location->SetReadOnly(true);
+        location->SetBorderless(true);
+        location->cursor = LWS::CursorShape::IBeam;
         location_ = location.get();
         location_->fontRole = FontRole::Small;
         descriptionScroll_->SetContent(std::make_unique<DescriptionContent>(std::move(description), std::move(location)));
@@ -276,82 +250,24 @@ namespace LWSSettings
         actions_->firstLeading = true;
         actions_->SetStyle(theme_.footer);
         actions_->SetHighlightPattern("");
-        auto action =
-            [&](std::string name, std::function<void()> callback, LWSUI::EditPhase phase = LWSUI::EditPhase::Commit)
+        auto action = [&](std::string caption, Command command, bool primary = false)
         {
-            auto ownedButton = std::make_unique<LWSUI::Button>(name);
-            auto& button = *ownedButton;
-            button.sizeToContent = true;
-            actions_->AddItem(std::move(ownedButton));
-            button.focusLossPhase = phase;
-            button.flat = true;
-            button.SetForeground(name == "Reset all" || name == "Cancel" || name == "Revert" ? theme_.footer.muted
-                                                                                             : theme_.footer.accent);
-            clicks_.push_back(button.OnClick.Connect(std::move(callback)));
+            auto button = std::make_unique<LWSUI::Button>(std::move(caption));
+            button->sizeToContent = button->flat = true;
+            button->focusLossPhase = command == Command::Cancel || command == Command::Revert
+                                        ? LWSUI::EditPhase::Cancel : LWSUI::EditPhase::Commit;
+            if (primary) primaryActions_.push_back(button.get());
+            clicks_.push_back(button->OnClick.Connect([this, command] { Execute(command); }));
+            actions_->AddItem(std::move(button));
         };
-        action("Reset all",
-               [this]
-               {
-                   if (Finish(LWSUI::EditPhase::Commit))
-                       Report(document_.ResetAll());
-               });
+        action("Reset all", Command::ResetAll);
         if (document_.Config().applyPolicy == ApplyPolicy::OnApply)
         {
-            action(
-                "Cancel",
-                [this]
-                {
-                    Finish(LWSUI::EditPhase::Cancel);
-                    document_.Cancel();
-                    information_ = "Changes cancelled";
-                    UpdateStatus();
-                },
-                LWSUI::EditPhase::Cancel);
-            action("Apply",
-                   [this]
-                   {
-                       if (Finish(LWSUI::EditPhase::Commit))
-                       {
-                           auto result = document_.Apply();
-                           if (!result)
-                               Report(result);
-                           else if (document_.Persistence().error)
-                               Report(std::unexpected(*document_.Persistence().error));
-                           else
-                               Report({});
-                           if (document_.Persistence().state != PersistenceState::Failed)
-                           {
-                               information_ = "Applied";
-                               UpdateStatus();
-                           }
-                       }
-                   });
+            action("Cancel", Command::Cancel);
+            action("Apply", Command::Apply, true);
         }
-        if (showRevert)
-            action(
-                "Revert",
-                [this]
-                {
-                    Finish(LWSUI::EditPhase::Cancel);
-                    document_.RevertSaved();
-                    information_ = "Restored saved values";
-                    UpdateStatus();
-                },
-                LWSUI::EditPhase::Cancel);
-        action(document_.Config().savePolicy == SavePolicy::OnCommit ? "Save now" : "Save",
-               [this]
-               {
-                   if (Finish(LWSUI::EditPhase::Commit))
-                   {
-                       auto result = SaveChanges();
-                       Report(result);
-                       if (result)
-                       {
-                           information_ = "Saved";
-                           UpdateStatus();
-                       }
-                   }
-               });
+        if (showRevert) action("Revert", Command::Revert);
+        action(document_.Config().savePolicy == SavePolicy::OnCommit ? "Save now" : "Save", Command::Save, true);
         layout_ = &Emplace<LWSUI::DockPanel>();
         const auto take = [&](LWSUI::Control* control) { return Remove(*control); };
         layout_->AddDocked(take(ownedHeader_), LWSUI::Dock::Top);
@@ -478,9 +394,9 @@ namespace LWSSettings
         static_cast<LWSUI::StackPanel*>(groupButtons_[0]->Parent())->spacing = theme_.search.spacing;
         treePanel_->SetStyle(theme_.tree);
         descriptionPanel_->SetStyle(theme_.description);
-        descriptionPanel_->padding = LWSUI::Insets{l.horizontalPadding - theme_.description.labelPadding,
+        descriptionPanel_->padding = LWSUI::Insets{std::max(0.f, l.horizontalPadding - theme_.description.labelPadding),
                                                    theme_.description.padding,
-                                                   l.horizontalPadding - theme_.description.labelPadding,
+                                                   std::max(0.f, l.horizontalPadding - theme_.description.labelPadding),
                                                    theme_.description.padding};
         static_cast<LWSUI::DockPanel*>(descriptionPanel_->Content())->gap = l.descriptionTitleGap;
         footerPanel_->SetStyle(theme_.footer);
@@ -497,9 +413,8 @@ namespace LWSSettings
         for (auto& child : actions_->Children())
         {
             auto& button = static_cast<LWSUI::Button&>(*child);
-            button.SetForeground(button.Text() == "Save" || button.Text() == "Save now" || button.Text() == "Apply"
-                                     ? theme_.footer.accent
-                                     : theme_.footer.muted);
+            const bool primary = std::find(primaryActions_.begin(), primaryActions_.end(), &button) != primaryActions_.end();
+            button.SetForeground(primary ? theme_.footer.accent : theme_.footer.muted);
         }
         for (auto& binding : bindings_)
         {
@@ -526,6 +441,36 @@ namespace LWSSettings
             binding->reset->focusLossPhase = state.focusLossPhase;
         }
     }
+    void SettingsView::Execute(Command command)
+    {
+        const bool cancel = command == Command::Cancel || command == Command::Revert;
+        const auto phase = cancel ? LWSUI::EditPhase::Cancel : LWSUI::EditPhase::Commit;
+        if (Host() ? !Host()->Finish(phase) : !Finish(phase)) return;
+        Status result;
+        std::string message;
+        switch (command)
+        {
+            case Command::Save:
+                result = SaveChanges(); message = "Saved"; break;
+            case Command::Apply:
+                result = document_.Apply();
+                if (result && document_.Persistence().error) result = std::unexpected(*document_.Persistence().error);
+                message = "Applied"; break;
+            case Command::ResetAll:
+                result = document_.ResetAll(); break;
+            case Command::Reset:
+                if (Host())
+                    for (const auto& binding : bindings_)
+                        if (Host()->HasFocusWithin(*binding->row)) { result = document_.Reset(binding->id); break; }
+                break;
+            case Command::Cancel:
+                document_.Cancel(); message = "Changes cancelled"; break;
+            case Command::Revert:
+                document_.RevertSaved(); message = "Restored saved values"; break;
+        }
+        information_ = result ? std::move(message) : std::string{};
+        Report(result);
+    }
     Status SettingsView::SaveChanges()
     {
         auto result = document_.Apply();
@@ -541,11 +486,9 @@ namespace LWSSettings
     {
         // Cancel the old popup session without publishing its old value over the reload.
         // Keep the controls, focus, filter, scroll offset and expansion state intact.
-        reloadingValues_ = true;
-        try
         {
-            if (Host())
-                Host()->ClosePopup(LWSUI::EditPhase::Cancel);
+            LWSUI::ScopedFlag restore(reloadingValues_, true);
+            if (Host()) Host()->ClosePopup(LWSUI::EditPhase::Cancel);
             for (auto& binding : bindings_)
             {
                 binding->editVisibility.reset();
@@ -553,12 +496,6 @@ namespace LWSSettings
                 StyleChanged(*binding);
             }
         }
-        catch (...)
-        {
-            reloadingValues_ = false;
-            throw;
-        }
-        reloadingValues_ = false;
         UpdateFilter();
         ClearStatus();
         Invalidate(true);
@@ -681,13 +618,7 @@ namespace LWSSettings
                     Status result;
                     try
                     {
-                        struct Updating
-                        {
-                            bool& flag;
-                            bool previous;
-                            explicit Updating(bool& value) : flag(value), previous(std::exchange(value, true)) {}
-                            ~Updating() { flag = previous; }
-                        } guard(binding->updating);
+                        LWSUI::ScopedFlag guard(binding->updating, true);
                         result = document_.SetValue(binding->id, value, ModelPhase(phase), ChangeOrigin::User);
                     }
                     catch (...)
@@ -924,9 +855,7 @@ namespace LWSSettings
                 // A reset/reload has already replaced the old popup's value. Do not
                 // publish a stale preview or cancellation over that replacement.
                 {
-                    struct RestoreFlag { bool& flag; bool previous; ~RestoreFlag() { flag = previous; } };
-                    RestoreFlag restore{reloadingValues_, reloadingValues_};
-                    reloadingValues_ = true;
+                    LWSUI::ScopedFlag restore(reloadingValues_, true);
                     Host()->ClosePopup(LWSUI::EditPhase::Cancel);
                     binding->refresh(*document_.WorkingValue(binding->id));
                 }
@@ -991,31 +920,11 @@ namespace LWSSettings
             Host()->Focus(search_);
             return true;
         }
-        if (input.control && input.key == Key::S)
-        {
-            if (Host() ? Host()->Finish(LWSUI::EditPhase::Commit) : Finish(LWSUI::EditPhase::Commit))
-            {
-                Report(SaveChanges());
-            }
-            return true;
-        }
-        if (input.control && input.key == Key::Enter)
-        {
-            if (Host() ? Host()->Finish(LWSUI::EditPhase::Commit) : Finish(LWSUI::EditPhase::Commit))
-                Report(document_.Apply());
-            return true;
-        }
+        if (input.control && input.key == Key::S) { Execute(Command::Save); return true; }
+        if (input.control && input.key == Key::Enter) { Execute(Command::Apply); return true; }
         if (input.control && input.key == Key::R)
         {
-            if (input.shift)
-                Report(document_.ResetAll());
-            else if (Host())
-                for (auto& binding : bindings_)
-                    if (Host()->HasFocusWithin(*binding->row))
-                    {
-                        Report(document_.Reset(binding->id));
-                        break;
-                    }
+            Execute(input.shift ? Command::ResetAll : Command::Reset);
             return true;
         }
         return false;

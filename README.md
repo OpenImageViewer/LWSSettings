@@ -357,6 +357,8 @@ keeping fonts readable. If even the minimum layout cannot fit, it reports that a
 window or smaller popup fonts are needed. Horizontal padding remains symmetric.
 
 Reusable TextBox controls support independent SetReadOnly and SetBorderless options.
+Multiline `sizeToContent` text uses its enclosing ScrollView for wheel scrolling,
+caret reveal, and drag selection, with no additional visible scrollbar.
 Read-only text retains selection, navigation, and copying; typing, deletion, cut, and
 paste are blocked. Enabling read-only cancels any active draft and invalidates pending
 paste. Programmatic SetText remains available. Borderless suppresses the input background
@@ -387,9 +389,13 @@ and their Save button remain separate from theme persistence.
 
 A theme profile is sparse: `{"version":1,"preset":"warm"}` is a complete valid theme.
 Optional `base`, `sections`, and `layout` properties override only the supplied fields.
-Omitting `preset` keeps legacy Dark behavior. Unknown presets fail without changing the
+Omitting `preset` uses the built-in Light default. Unknown presets fail without changing the
 active session. Use ThemeStorage's profile APIs to retain the preset; the override-only
-helpers describe patches over Dark. Full-theme export writes all resolved values.
+helpers describe patches over the built-in default. Full-theme export writes all resolved values.
+Export editor templates with `--export-theme-template theme-settings.json`. The
+template is generated from the catalog instead of maintained as a second source.
+Legacy `searchHeight` and `statusHeight` keys remain readable but are hidden from
+the editor because the corresponding areas size to their content.
 
 ThemeSession owns current/saved profiles and live notifications without loading editor
 definitions. ThemeSelector is an optional UI adapter. ThemeEditor accepts a shared session

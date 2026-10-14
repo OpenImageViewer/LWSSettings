@@ -198,6 +198,7 @@ namespace LWSSettings
         // Shared mutation path after validation; notification and persistence belong to the caller.
         bool SetValidatedValue(const std::string& id, Value value, EditPhase phase, ChangeOrigin origin);
         Status ResetValues(Values values);
+        void QueueDifferences(const Values& before, const Values& after, EditPhase phase, ChangeOrigin origin, ValueDomain domain);
         void Notify();
         void AutoSave();
         Status Persist();

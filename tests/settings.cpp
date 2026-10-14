@@ -236,7 +236,9 @@ TEST_CASE("Templates create typed defaults without a platform session")
     std::ifstream themeInput(themeFile.path, std::ios::binary);
     std::string themeBytes((std::istreambuf_iterator<char>(themeInput)), {});
     REQUIRE(themeBytes.find("\r\n") != std::string::npos);
-    std::ifstream templateFile(std::filesystem::path(LWSSETTINGS_EXAMPLES_DIR) / "theme-settings.json");
+    TempFile exportedTemplate;
+    REQUIRE(ThemeStorage::SaveTemplateFile(exportedTemplate.path));
+    std::ifstream templateFile(exportedTemplate.path);
     REQUIRE(Json::parse(templateFile) == ThemeStorage::Template());
     TempFile liveFile;
     REQUIRE(ThemeStorage::SaveOverridesFile(liveFile.path, {}));
@@ -333,7 +335,7 @@ TEST_CASE("Templates create typed defaults without a platform session")
     for (const auto& field : ThemeFields::All())
     {
         REQUIRE(publicTemplate.Find(field.path));
-        REQUIRE(publicTemplate.Find(field.path)->visibleInEditor);
+        REQUIRE(publicTemplate.Find(field.path)->visibleInEditor == field.definition.visibleInEditor);
     }
     auto& document = internal::ThemeEditorTestAccess::Editor(live).Document();
     SettingsTheme preview;
@@ -1190,7 +1192,7 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
     REQUIRE(name->Font().size == config.theme.controls.font.size);
     TempFile editedTheme;
     ThemeEditor themeEditor(platform, editedTheme.path);
-    REQUIRE(themeEditor.Load(std::filesystem::path(LWSSETTINGS_EXAMPLES_DIR) / "theme-settings.json"));
+    REQUIRE(themeEditor.Load());
     auto livePreview = themeEditor.OnPreview.Connect([&](const SettingsTheme& theme)
                                                      { REQUIRE(editor.SetTheme(theme)); });
     REQUIRE(themeEditor.Show());
@@ -3183,13 +3185,19 @@ TEST_CASE("Details copy read-only text and restore the remembered setting outsid
     {
         std::string text;
         bool called = false;
-        LWS::RequestClipboardText(window, [&](auto result, std::string value)
+        auto result = LWS::ClipboardResult::AccessDenied;
+        for (int attempt = 0; attempt < 30 && result != LWS::ClipboardResult::Success; ++attempt)
         {
-            REQUIRE(result == LWS::ClipboardResult::Success);
-            text = std::move(value);
-            called = true;
-        });
+            LWS::RequestClipboardText(window, [&](auto status, std::string value)
+            {
+                result = status;
+                text = std::move(value);
+                called = true;
+            });
+            if (result != LWS::ClipboardResult::Success) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
         REQUIRE(called);
+        REQUIRE(result == LWS::ClipboardResult::Success);
         return text;
     };
     for (auto* text : {body, location})
@@ -4019,4 +4027,104 @@ TEST_CASE("Save and Apply shortcuts validate relocated header drafts", "[viewer]
     text.SetValidation("");
     REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter, .control = true}));
     REQUIRE(editor.Document().AppliedValue("name") == Value{std::string{"pending"}});
+}
+
+TEST_CASE("Apply commands retain automatic save errors", "[viewer][commands]")
+{
+    TestPlatform platform;
+    for (bool shortcut : {false, true})
+    {
+        EditorConfig config;
+        config.document.applyPolicy = ApplyPolicy::OnApply;
+        config.document.savePolicy = SavePolicy::OnCommit;
+        config.document.valuesFile = "unused.json";
+        config.document.writeValues = [](const auto&, const auto&) -> Status
+        { return std::unexpected(Error{"save", "Writer failed"}); };
+        SettingsEditor editor(platform, config);
+        REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+        REQUIRE(editor.Document().SetValue("name", std::string{"changed"}));
+        REQUIRE(editor.Show());
+        auto& view = *editor.View();
+        auto& host = *view.Host();
+        WaitForConfiguration(host.Window());
+        if (shortcut) REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter, .control = true}));
+        else FindButton(view, "Apply")->OnClick.Raise();
+        host.Update();
+        REQUIRE(editor.Document().AppliedValue("name") == Value{std::string{"changed"}});
+        REQUIRE(editor.Document().Persistence().error);
+        bool visibleError = false;
+        for (auto* label : Controls<LWSUI::Label>(view))
+            visibleError |= label->Visible() && label->Text() == "save: Writer failed";
+        REQUIRE(visibleError);
+    }
+}
+TEST_CASE("Window recreation retains search text and the current value filter", "[viewer][lifetime]")
+{
+    TestPlatform platform;
+    SettingsEditor editor(platform);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    WaitForConfiguration(editor.View()->Host()->Window());
+    Draft(*FindControl<LWSUI::TextBox>(*editor.View()), "CoUnT");
+    editor.SetValueFilter(SettingValueFilter::Changed);
+    editor.View()->Host()->Update();
+    REQUIRE(editor.GetValueFilter() == SettingValueFilter::Changed);
+    REQUIRE(editor.View()->GetFilter() == "CoUnT");
+    REQUIRE(editor.View()->Host()->Window().Destroy() == LWS::Result::Success);
+    REQUIRE(editor.Show());
+    REQUIRE(editor.GetValueFilter() == SettingValueFilter::Changed);
+    REQUIRE(editor.View()->GetFilter() == "CoUnT");
+}
+TEST_CASE("Theme exports preserve close colors and hidden legacy keys", "[theme][storage]")
+{
+    SettingsTheme theme;
+    theme.base.closeHoverBackground = LLUtils::Color{uint32_t{0x123456ff}};
+    theme.header.closePressedBackground = LLUtils::Color{uint32_t{0xabcdef80}};
+    theme.header.closeActiveForeground = LLUtils::Color{uint32_t{0x010203ff}};
+    auto decoded = ThemeStorage::Decode(ThemeStorage::Encode(theme));
+    REQUIRE(decoded);
+    REQUIRE(decoded->base.closeHoverBackground == theme.base.closeHoverBackground);
+    REQUIRE(decoded->header.closePressedBackground == theme.header.closePressedBackground);
+    REQUIRE(decoded->header.closeActiveForeground == theme.header.closeActiveForeground);
+    SettingsDocument catalog;
+    REQUIRE(SettingsStorage::LoadTemplate(catalog, ThemeStorage::Template()));
+    for (const auto* path : {"layout/searchHeight", "layout/statusHeight"})
+    {
+        REQUIRE(catalog.Find(path));
+        REQUIRE_FALSE(catalog.Find(path)->visibleInEditor);
+    }
+    REQUIRE(ThemeStorage::Decode(Json{{"version", 1}, {"layout", {{"searchHeight", 55}, {"statusHeight", 33}}}}));
+}
+TEST_CASE("Description geometry contains its scrollbar with large padding", "[viewer][layout]")
+{
+    TestPlatform platform;
+    LWS::Window window(platform);
+    REQUIRE(window.Create({.clientSize = {820, 680}, .visible = true}) == LWS::Result::Success);
+    WaitForConfiguration(window);
+    LWSUI::UIHost host(window);
+    SettingsDocument document;
+    auto schema = Template();
+    std::string description;
+    for (int i = 0; i < 100; ++i) description += "A long wrapped description. ";
+    schema["children"][0]["children"][0]["description"] = description;
+    REQUIRE(SettingsStorage::LoadTemplate(document, schema));
+    SettingsTheme theme;
+    theme.layout.horizontalPadding = 1;
+    theme.description.labelPadding = 100;
+    auto root = std::make_unique<SettingsView>(document, "Settings", theme);
+    auto& view = *root;
+    host.SetRoot(std::move(root));
+    host.Update();
+    REQUIRE(host.Focus(FindControl<LWSUI::TreeView::Row>(view)));
+    host.Update();
+    LWSUI::TextBox* text = nullptr;
+    for (auto* candidate : Controls<LWSUI::TextBox>(view)) if (candidate->Text() == description) text = candidate;
+    REQUIRE(text);
+    auto* scroll = dynamic_cast<LWSUI::ScrollView*>(text->Parent()->Parent());
+    REQUIRE(scroll);
+    auto* panel = scroll->Parent()->Parent();
+    auto* bar = static_cast<LWSUI::ScrollBar*>(scroll->Children().front().get());
+    REQUIRE(bar->Visible());
+    REQUIRE(bar->Bounds().x >= panel->Bounds().x);
+    REQUIRE(bar->Bounds().x + bar->Bounds().width <= panel->Bounds().x + panel->Bounds().width);
 }

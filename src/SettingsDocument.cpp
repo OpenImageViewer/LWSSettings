@@ -1,5 +1,6 @@
 #include <LWSSettings/SettingsDocument.hpp>
 #include "SliderRange.hpp"
+#include <LWSUI/ScopedFlag.hpp>
 #include <LWSSettings/SettingsStorage.hpp>
 #include <charconv>
 #include <cmath>
@@ -294,12 +295,7 @@ namespace LWSSettings
         bool changed = false;
         const bool outermost = !resetting_;
         {
-            struct ResetScope
-            {
-                bool& active;
-                bool previous;
-                ~ResetScope() { active = previous; }
-            } scope{resetting_, std::exchange(resetting_, true)};
+            LWSUI::ScopedFlag scope(resetting_, true);
             for (auto& [id, value] : values)
                 changed |= SetValidatedValue(id, std::move(value), EditPhase::Commit, ChangeOrigin::Reset);
             Notify();
@@ -355,15 +351,18 @@ namespace LWSSettings
             defaults.emplace(id, setting->DefaultValue());
         return ResetValues(std::move(defaults));
     }
+    void SettingsDocument::QueueDifferences(const Values& before, const Values& after, EditPhase phase,
+                                            ChangeOrigin origin, ValueDomain domain)
+    {
+        for (const auto& [id, value] : after)
+            if (before.at(id) != value) notifications_.push_back({id, before.at(id), value, phase, origin, domain});
+    }
     Status SettingsDocument::Apply()
     {
         const auto previous = applied_;
         applied_ = working_;
         editStarts_.clear();
-        for (const auto& [id, value] : applied_)
-            if (previous.at(id) != value)
-                notifications_.push_back(
-                    {id, previous.at(id), value, EditPhase::Commit, ChangeOrigin::User, ValueDomain::Applied});
+        QueueDifferences(previous, applied_, EditPhase::Commit, ChangeOrigin::User, ValueDomain::Applied);
         Notify();
         if (config_.savePolicy == SavePolicy::OnCommit)
             AutoSave();
@@ -382,10 +381,8 @@ namespace LWSSettings
         else
             working_ = applied_;
         editStarts_.clear();
-        for (const auto& [id, value] : working_)
-            if (previous.at(id) != value)
-                notifications_.push_back({id, previous.at(id), value, EditPhase::Cancel, ChangeOrigin::Cancel,
-                                          immediate ? ValueDomain::Applied : ValueDomain::Working});
+        QueueDifferences(previous, working_, EditPhase::Cancel, ChangeOrigin::Cancel,
+                         immediate ? ValueDomain::Applied : ValueDomain::Working);
         Notify();
     }
     void SettingsDocument::RevertSaved()
@@ -396,16 +393,10 @@ namespace LWSSettings
         persistence_.error.reset();
         if (persistence_.state == PersistenceState::Failed)
             persistence_.state = PersistenceState::NeverSaved;
-        for (const auto& [id, value] : working_)
-            if (previous.at(id) != value)
-                notifications_.push_back(
-                    {id, previous.at(id), value, EditPhase::Cancel, ChangeOrigin::Cancel,
-                     config_.applyPolicy == ApplyPolicy::Immediate ? ValueDomain::Applied : ValueDomain::Working});
+        QueueDifferences(previous, working_, EditPhase::Cancel, ChangeOrigin::Cancel,
+                         config_.applyPolicy == ApplyPolicy::Immediate ? ValueDomain::Applied : ValueDomain::Working);
         if (config_.applyPolicy == ApplyPolicy::OnApply)
-            for (const auto& [id, value] : applied_)
-                if (previousApplied.at(id) != value)
-                    notifications_.push_back({id, previousApplied.at(id), value, EditPhase::Cancel,
-                                              ChangeOrigin::Cancel, ValueDomain::Applied});
+            QueueDifferences(previousApplied, applied_, EditPhase::Cancel, ChangeOrigin::Cancel, ValueDomain::Applied);
         Notify();
         OnValuesReload.Raise();
     }

@@ -30,4 +30,33 @@ namespace LWSSettings::Detail
             return std::unexpected(std::move(invalid));
         return LLUtils::Color{text.size() == 7 ? (color << 8) | 255 : color};
     }
+    struct Invalid
+    {
+        Error error;
+    };
+    [[noreturn]] inline void Reject(std::string path, std::string message)
+    {
+        throw Invalid{{std::move(path), std::move(message)}};
+    }
+    inline Value DecodeValue(const nlohmann::json& json, const SettingDefinition& definition, bool decimalNumbers = true)
+    {
+        if (std::holds_alternative<ColorDefinition>(definition.specification))
+        {
+            auto color = DecodeColor(json);
+            if (!color) Reject(definition.id, color.error());
+            return *color;
+        }
+        if (decimalNumbers && std::holds_alternative<DecimalDefinition>(definition.specification) && json.is_number())
+            return json.get<double>();
+        if (json.is_boolean()) return json.get<bool>();
+        if (json.is_number_integer())
+        {
+            if (json.is_number_unsigned() && json.get<uint64_t>() > uint64_t(INT64_MAX))
+                Reject(definition.id, "Expected a signed 64-bit integer");
+            return json.get<int64_t>();
+        }
+        if (json.is_number_float()) return json.get<double>();
+        if (json.is_string()) return json.get<std::string>();
+        Reject(definition.id, "Expected a scalar value");
+    }
 }  // namespace LWSSettings::Detail

@@ -15,44 +15,14 @@ namespace LWSSettings
     using Json = nlohmann::json;
     namespace
     {
-        struct Invalid
-        {
-            Error error;
-        };
-        [[noreturn]] void Reject(std::string location, std::string message)
-        {
-            throw Invalid{{std::move(location), std::move(message)}};
-        }
+        using Detail::Invalid;
+        using Detail::Reject;
+        using Detail::DecodeValue;
         std::string Required(const Json& json, const char* key, const std::string& location)
         {
             if (!json.contains(key) || !json[key].is_string() || json[key].get_ref<const std::string&>().empty())
                 Reject(location + "/" + key, "Expected a nonempty string");
             return json[key].get<std::string>();
-        }
-        Value DecodeValue(const Json& json, const SettingDefinition& definition)
-        {
-            if (std::holds_alternative<ColorDefinition>(definition.specification))
-            {
-                auto color = Detail::DecodeColor(json);
-                if (!color)
-                    Reject(definition.id, color.error());
-                return *color;
-            }
-            if (std::holds_alternative<DecimalDefinition>(definition.specification) && json.is_number())
-                return json.get<double>();
-            if (json.is_boolean())
-                return json.get<bool>();
-            if (json.is_number_integer())
-            {
-                if (json.is_number_unsigned() && json.get<uint64_t>() > uint64_t(INT64_MAX))
-                    Reject(definition.id, "Expected a signed 64-bit integer");
-                return json.get<int64_t>();
-            }
-            if (json.is_number_float())
-                return json.get<double>();
-            if (json.is_string())
-                return json.get<std::string>();
-            Reject(definition.id, "Expected a scalar setting value");
         }
         template <class T>
         T Number(const Json& json, const std::string& location)
@@ -112,6 +82,7 @@ namespace LWSSettings
             }
             SettingDefinition setting;
             static_cast<Metadata&>(setting) = std::move(metadata);
+            setting.visibleInEditor = json.value("visibleInEditor", true);
             if (type == "text")
                 setting.specification = TextDefinition{};
             else if (type == "file")
@@ -152,21 +123,21 @@ namespace LWSSettings
                        setting.specification);
             return {std::move(setting)};
         }
-        std::expected<Json, Error> ReadFile(const std::filesystem::path& path)
-        {
-            try
-            {
-                std::ifstream input(path, std::ios::binary);
-                if (!input)
-                    return std::unexpected(Error{path.string(), "Cannot open file"});
-                return Json::parse(input);
-            }
-            catch (const std::exception& e)
-            {
-                return std::unexpected(Error{path.string(), e.what()});
-            }
-        }
     }  // namespace
+    std::expected<Json, Error> Detail::ReadJsonFile(const std::filesystem::path& path)
+    {
+        try
+        {
+            std::ifstream input(path, std::ios::binary);
+            if (!input)
+                return std::unexpected(Error{path.string(), "Cannot open file"});
+            return Json::parse(input);
+        }
+        catch (const std::exception& e)
+        {
+            return std::unexpected(Error{path.string(), e.what()});
+        }
+    }
     Status SettingsStorage::LoadTemplate(SettingsDocument& document, const Json& json)
     {
         try
@@ -191,7 +162,7 @@ namespace LWSSettings
     }
     Status SettingsStorage::LoadTemplateFile(SettingsDocument& document, const std::filesystem::path& file)
     {
-        auto json = ReadFile(file);
+        auto json = Detail::ReadJsonFile(file);
         if (!json)
             return std::unexpected(json.error());
         return LoadTemplate(document, *json);
@@ -221,7 +192,7 @@ namespace LWSSettings
     }
     Status SettingsStorage::LoadValuesFile(SettingsDocument& document, const std::filesystem::path& file)
     {
-        auto json = ReadFile(file);
+        auto json = Detail::ReadJsonFile(file);
         if (!json)
             return std::unexpected(json.error());
         return LoadValues(document, *json);

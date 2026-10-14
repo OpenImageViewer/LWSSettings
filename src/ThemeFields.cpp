@@ -14,6 +14,9 @@ namespace LWSSettings
             {"changed", &LWSUI::Theme::changed},
             {"error", &LWSUI::Theme::error},
             {"hoverSurface", &LWSUI::Theme::hoverSurface},
+            {"closeHoverBackground", &LWSUI::Theme::closeHoverBackground},
+            {"closePressedBackground", &LWSUI::Theme::closePressedBackground},
+            {"closeActiveForeground", &LWSUI::Theme::closeActiveForeground},
             {"line", &LWSUI::Theme::line},
             {"muted", &LWSUI::Theme::muted},
             {"selectedRow", &LWSUI::Theme::selectedRow},
@@ -122,6 +125,7 @@ namespace LWSSettings
             field.assign = std::move(assign);
             auto& d = field.definition;
             d.id = field.path;
+            d.visibleInEditor = d.id != "layout/searchHeight" && d.id != "layout/statusHeight";
             d.label = Label(field.path.substr(field.path.rfind('/') + 1));
             d.description = "Theme property: " + field.path +
                             ". Editing creates an override; Use inherited restores the base or default value.";

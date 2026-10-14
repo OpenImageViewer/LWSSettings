@@ -10,7 +10,6 @@ namespace LWSSettings
         ThemeSelector(ThemeSession&, std::function<Status()> save = {}, std::function<void()> revert = {},
                       std::function<void()> edit = {});
       protected:
-        LWSUI::Size OnMeasure(LWSUI::Size) override;
         void Activate() override;
       private:
         void Refresh();

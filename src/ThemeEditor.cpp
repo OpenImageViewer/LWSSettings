@@ -1,19 +1,10 @@
 #include "ThemeFields.hpp"
+#include <LWSUI/ScopedFlag.hpp>
 #include <LWSSettings/ThemeEditor.hpp>
 #include <LWSSettings/SettingsStorage.hpp>
 #include <LWSSettings/ThemeSelector.hpp>
 namespace LWSSettings
 {
-    namespace
-    {
-        struct Synchronizing
-        {
-            bool& flag;
-            bool previous;
-            explicit Synchronizing(bool& value) : flag(value), previous(std::exchange(value, true)) {}
-            ~Synchronizing() { flag = previous; }
-        };
-    }
     std::string ThemeEditor::OverrideId(std::string_view path)
     {
         return "@theme/override/" + std::string(path);
@@ -30,7 +21,7 @@ namespace LWSSettings
         {
             auto profile = ReadProfile(values);
             if (!profile) return std::unexpected(profile.error());
-            Synchronizing guard(synchronizing_);
+            LWSUI::ScopedFlag guard(synchronizing_, true);
             auto result = session_.SetProfile(std::move(*profile));
             if (result) result = session_.Save();
             return result;
@@ -104,6 +95,11 @@ namespace LWSSettings
                     self(self, group->children);
                 else if (auto* setting = std::get_if<SettingDefinition>(&node.content))
                 {
+                    if (const auto* field = ThemeFields::Find(setting->id); field && !field->definition.visibleInEditor)
+                    {
+                        changed |= setting->visibleInEditor;
+                        setting->visibleInEditor = false;
+                    }
                     if (auto* color = std::get_if<ColorDefinition>(&setting->specification);
                         color && setting->id.ends_with("/colors/changed") &&
                         color->defaultValue == LLUtils::Color{uint32_t{0xf2c66dff}})
@@ -127,7 +123,10 @@ namespace LWSSettings
                 }
         };
         upgradeDefaults(upgradeDefaults, upgraded);
-        const std::map<std::string, std::string> additions{{"resetRightMargin", "resetWidth"},
+        const std::map<std::string, std::string> additions{{"closeHoverBackground", "hoverSurface"},
+                                                           {"closePressedBackground", "closeHoverBackground"},
+                                                           {"closeActiveForeground", "closePressedBackground"},
+                                                           {"resetRightMargin", "resetWidth"},
                                                            {"menuBarHeight", "menuPadding"},
                                                            {"menuBarPadding", "menuBarHeight"},
                                                            {"menuArrowWidth", "menuBarPadding"},
@@ -169,7 +168,7 @@ namespace LWSSettings
         for (const auto& field : ThemeFields::All())
         {
             const auto* value = candidate.Find(field.path);
-            if (!value || !value->visibleInEditor ||
+            if (!value || value->visibleInEditor != field.definition.visibleInEditor ||
                 value->specification.index() != field.definition.specification.index() ||
                 value->DefaultValue() != field.definition.DefaultValue())
                 return std::unexpected(
@@ -199,11 +198,14 @@ namespace LWSSettings
         }
         SettingDefinition preset;
         preset.id = "@theme/preset"; preset.label = "Theme preset"; preset.visibleInEditor = false;
-        preset.specification = ChoiceDefinition{"dark", {{"Dark", "dark"}, {"Light", "light"}, {"Warm", "warm"}}};
+        ChoiceDefinition choices;
+        choices.defaultValue = LWSUI::ThemePresetName(LWSUI::DefaultThemePreset);
+        for (auto value : LWSUI::ThemePresets) choices.options.push_back({LWSUI::ThemePresetLabel(value), LWSUI::ThemePresetName(value)});
+        preset.specification = std::move(choices);
         combinedDefinitions.push_back({std::move(preset)});
         if (ownedSession_)
         {
-            Synchronizing guard(synchronizing_);
+            LWSUI::ScopedFlag guard(synchronizing_, true);
             auto result = session_.Load();
             if (!result) return result;
         }
@@ -220,8 +222,9 @@ namespace LWSSettings
         if (found == values.end() || !std::holds_alternative<std::string>(found->second))
             return std::unexpected(Error{"preset", "Missing theme preset"});
         const auto& name = std::get<std::string>(found->second);
-        auto preset = name == "light" ? LWSUI::ThemePreset::Light : name == "warm" ? LWSUI::ThemePreset::Warm : LWSUI::ThemePreset::Dark;
-        return ThemeProfile{preset, std::move(*overrides)};
+        auto preset = LWSUI::ParseThemePreset(name);
+        if (!preset) return std::unexpected(Error{"preset", "Unknown theme preset"});
+        return ThemeProfile{*preset, std::move(*overrides)};
     }
     Values ThemeEditor::EditingValues(const ThemeProfile& profile) const
     {
@@ -249,7 +252,7 @@ namespace LWSSettings
     {
         if (!loaded_) return;
         pullPending_ = false;
-        Synchronizing guard(synchronizing_);
+        LWSUI::ScopedFlag guard(synchronizing_, true);
         if (auto* view = editor_.View()) view->Finish(LWSUI::EditPhase::Cancel);
         automaticOverrides_.clear();
         auto& document = editor_.Document();
@@ -397,7 +400,7 @@ namespace LWSSettings
             }
         UpdatePresentation(overrides);
         {
-            Synchronizing guard(synchronizing_);
+            LWSUI::ScopedFlag guard(synchronizing_, true);
             auto result = session_.SetProfile(std::move(*profile));
             if (!result) editor_.Document().OnError.Raise(result.error());
         }
@@ -406,7 +409,7 @@ namespace LWSSettings
     void ThemeEditor::Revert()
     {
         {
-            Synchronizing guard(synchronizing_);
+            LWSUI::ScopedFlag guard(synchronizing_, true);
             if (auto* view = editor_.View()) view->Finish(LWSUI::EditPhase::Cancel);
             session_.Revert();
         }
