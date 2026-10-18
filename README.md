@@ -347,8 +347,10 @@ steps. Focus stays on the current control; invalid drafts block adjustments. Ctr
 accepts valid edits, and Escape restores the original color. Ctrl+Alt is not a picker-wide
 shortcut. Plain arrows still operate the focused control.
 
-The editable hex value sits beside New; Original shows the fixed opening value as a
-read-only selectable #RRGGBBAA text. Double-click the Original preview to restore its
+The editable color value sits beside New. It accepts prefixed hexadecimal or
+decimal RGBA such as `255,240,210,255`. Hexadecimal is grouped as `#FF-F0-D2-FF`
+on acceptance, and `0x` is also supported. Original shows the fixed opening value
+as read-only selectable text in its independently selected format. Double-click the Original preview to restore its
 color and alpha, including replacing an invalid draft, without closing the picker.
 New/original previews share one cached composed image with an opaque-color fast path.
 The picker keeps all seven channels in compact rows and has no scrollbar. It measures
@@ -458,3 +460,119 @@ editor, or event window. The newest 200 settings-change records are retained in
 memory while hidden. The read-only viewer supports selection and Copy, and Clear
 empties its history. Closing the event window hides it, and closing Settings
 ends the application. The debug feature writes no event files or console output.
+
+## Invalid edit policy and color input
+
+Fields choose only how invalid drafts behave during ordinary navigation:
+`BlockOnLeave`, `DiscardOnLeave`, or `KeepInvalid`. `KeepInvalid` is the default.
+Discard and Escape restore the value from the start of the edit,
+including any valid previews made during that edit. Invalid text stays in controls
+and never becomes a typed document value. Direct `Finish(EditPhase::Commit)` is strict.
+
+Set `EditorConfig::invalidEditPolicy` or `SettingsEditor::SetInvalidEditPolicy` for
+the field default. Override individual fields with
+`SettingsView::SetFieldInvalidEditPolicy(id, policy)`, passing `std::nullopt` to
+restore inheritance. Fields no longer have a form-block scope.
+
+Save and Close have independent form policies. `FormValidationPolicy::SaveValidFields`
+silently discards invalid drafts and saves the resulting valid form.
+`ShowDecisionDialog` lists invalid fields and offers configurable actions.
+Both operations default to `ShowDecisionDialog` with every optional action enabled.
+Save and Apply use `EditorConfig::saveValidationPolicy`. Close uses
+`EditorConfig::closeValidationPolicy`. Both use `FormValidationPolicy`.
+Runtime setters are available on `SettingsEditor`.
+
+`LWSSettingsDemo` defaults to decision dialogs for both Save and Close, with all
+optional actions enabled. Save offers **Save valid fields** and **Keep editing**.
+Close offers **Save valid fields and close**, **Discard all and close**, and
+**Cancel close**. `saveDialogOptions.saveValidFields` and the corresponding
+`closeDialogOptions` flags control optional actions. Cancellation is always
+available, even when every optional action is disabled. Escape cancels the dialog.
+Dialogs appear only when invalid fields exist. A valid Save saves directly, and
+valid Close saves and closes. Saving requires a configured values file.
+Disable optional save actions to require correction through the decision dialog.
+
+Save, Apply and Close inspect active drafts before navigation can discard them.
+Decision dialogs suspend open color pickers and restore their input on cancellation.
+A failed save leaves the form open and preserves drafts for retry. Save-valid
+persistence uses edit-start values for invalid fields and current valid values for
+other fields. Apply uses the same validation choices without writing in manual-save
+mode. Discard all restores the last successfully saved values, including valid
+unsaved changes, without writing. Previously autosaved changes are already saved
+and are therefore part of that baseline.
+
+Build and run `LWSSettingsValidationDemo` for six fields demonstrating the three
+navigation behaviors, decimal bounds, incomplete colors, and unrestricted text.
+Separate Save / Apply and Close sections below the fields provide silent-save or
+decision-dialog radio buttons and checkboxes for optional dialog actions. Both
+sections start in dialog mode with every action enabled. Persistence is manual.
+Try `999` in the first three fields, which accept integers from 1 to 100, or type
+a letter to see filter feedback. Rejected edits display an explanation beside the
+focused textbox and leave its text and selection intact. The explanation clears
+after an accepted edit or finishing the interaction. Invalid fields have a red
+underline at least 3 logical pixels thick.
+
+Color fields edit hexadecimal RGBA as `#FF-F0-D2-FF`, `0xFF-F0-D2-FF`, or
+`0XFF-F0-D2-FF`, and decimal RGBA as `255,240,210,255`. Byte completion advances
+the caret automatically. Decimal commas can finish shorter channels. Legacy
+compact and space-separated hexadecimal paste remains supported, including
+six-digit RGB with opaque alpha. Incomplete typing previews entered channels
+with missing RGB channels set to 0 and missing alpha set to 255, without
+publishing an incomplete value. Deleting all decimal digits resets the mask. Hexadecimal
+resets after deleting its digits and prefix. Settings JSON remains canonical
+`#RRGGBBAA`.
+TextBox supports Ctrl+Insert for Copy and Shift+Insert for Paste. GridView
+supports Ctrl+Insert for Copy.
+
+Color channel digits use bright red, green, blue, and white for R/G/B/A in inline
+input, popup input, Original text, and separate channel boxes. Color textboxes
+have a stable charcoal background (`#161616FF`), with white prefixes and separators.
+Red uses `#FF5555FF` and blue uses `#3399FFFF` for readability. Focus is shown
+with a theme-accent outline, and validation feedback remains visible above it.
+Selection overrides channel colors. Hexadecimal digits display in uppercase.
+
+Pasting `#  123f56` into a prefix-only field or `123f56` into an empty field
+produces `#12-3F-56-FF`. Typing `123F` selects hexadecimal and previews
+`#123F00FF`. Automatic decimal separators do not lock the format, but explicitly
+typing a comma selects decimal.
+
+Color digits use saturated red `#FF5555FF` and blue `#3399FFFF`, with semibold
+weight 600 and a minimum size of 16 logical pixels. Theme font families and
+larger configured sizes remain effective. The H/S/L fields keep normal theme
+typography.
+
+Pasting into color input starts a new draft, replacing the existing value.
+Incomplete decimal `111,111` and hexadecimal `123F` are accepted and preview
+with zero missing RGB channels and opaque missing alpha. They remain
+uncommitted until complete. Escape restores the previous color.
+
+Combined color input changes to hex when undecided decimal digits exceed 255,
+so `333` becomes `#33-3`. RGB alone is sufficient for a valid color, with alpha
+defaulting to 255. A final single blue or alpha hex digit is treated as its high
+nibble: `1234F` becomes `#1234F0FF`, and `123456A` becomes `#123456A0` on commit.
+The popup's R/G/B/A boxes also accept hex bytes as `FF`, `#FF`, or `0xFF`.
+H/S/L remains decimal.
+
+Double-click a color textbox to toggle hexadecimal and decimal notation. This
+includes inline input, the popup's New and Original values, and individual
+R/G/B/A boxes. Each field toggles independently and remembers its last hex
+prefix. H/S/L stays decimal. Incomplete input converts its temporary preview
+with the existing missing-channel defaults. Escape restores an editable
+field's edit-start value and presentation. Double-click conversion does not
+invoke Save or Apply.
+
+Blocked navigation explains the validation reason beside the field and offers
+Escape to restore its previous value. Numeric errors include configured bounds.
+Explicit `revertOnClose` remains a cancellation path that restores saved values.
+
+SettingsDocument::CompleteEdits owns edit completion, derived callbacks, autosave
+batching, and persistence. Save writes an owned snapshot after completion. Failed
+writes restore document values and edit starts and notify adapters to resynchronize.
+SettingsView holds its drafts and popup sessions unchanged until completion succeeds.
+Auxiliary header and extension controls must also accept completion before a write.
+
+Application keyboard commands are registered through UIHost::OnCommandInput.
+LWSSettings chooses Ctrl+S and Ctrl+Enter for its owned popups. LWSUI does not assign
+those shortcuts. Actions can explicitly allow input outside a popup with
+Control::allowDuringPopup, while normal mouse-button, capture, and availability
+checks remain in effect.

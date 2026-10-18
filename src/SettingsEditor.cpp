@@ -14,6 +14,11 @@ namespace LWSSettings
         if (host_)
             host_->SetRedrawOnResize(enabled);
     }
+    void SettingsEditor::SetInvalidEditPolicy(LWSUI::InvalidEditPolicy policy)
+    {
+        config_.invalidEditPolicy = policy;
+        if (host_) host_->SetInvalidEditPolicy(policy);
+    }
     Status SettingsEditor::Show()
     {
         if (!platform_.IsUsable())
@@ -69,6 +74,7 @@ namespace LWSSettings
                 listener_ = std::move(*listener);
                 host_ = std::make_unique<LWSUI::UIHost>(*window_, config_.theme.base);
                 host_->SetRedrawOnResize(config_.redrawOnResize);
+                host_->SetInvalidEditPolicy(config_.invalidEditPolicy);
                 host_->SetPopupStyle(config_.theme.popups);
                 auto bar = std::make_unique<LWSUI::MenuBar>();
                 bar->SetWindowControls({.minimize = true, .draggable = true, .requestClose = [this] { Hide(); }});
@@ -77,6 +83,8 @@ namespace LWSSettings
                                                            config_.collapseGroups);
                 auto* createdView = view.get();
                 view->SetIcon(icon);
+                view->SetSaveValidationPolicy(config_.saveValidationPolicy);
+                view->SetSaveDialogOptions(config_.saveDialogOptions);
                 host_->SetRoot(std::move(view));
                 view_ = createdView;
                 view_->MoveHeaderTo(*host_->MainMenu());
@@ -126,10 +134,23 @@ namespace LWSSettings
     bool SettingsEditor::Hide()
     {
         const bool wasVisible = IsVisible();
-        if (host_ && !host_->Finish(config_.revertOnClose ? LWSUI::EditPhase::Cancel : LWSUI::EditPhase::Commit))
-            return false;
-        if (config_.revertOnClose)
-            document_.RevertSaved();
+        if (host_ && wasVisible)
+        {
+            if (config_.revertOnClose)
+            {
+                // Explicit revert remains cancellation rather than a save request.
+                if (view_ && !view_->PrepareClose()) return false;
+                if (!host_->Finish(LWSUI::EditPhase::Cancel)) return false;
+                document_.RevertSaved();
+            }
+            else if (view_ && !view_->FinishForClose(config_.closeValidationPolicy, config_.closeDialogOptions,
+                                                    [this] { HideWindow(); })) return false;
+        }
+        return HideWindow();
+    }
+    bool SettingsEditor::HideWindow()
+    {
+        const bool wasVisible = IsVisible();
         if (window_ && window_->IsCreated() && window_->SetVisible(false) != LWS::Result::Success)
             return false;
         if (wasVisible) OnHidden.Raise();

@@ -117,7 +117,7 @@ namespace LWSSettings
     }
     Status SettingsDocument::ReplaceDefinitions(std::vector<Definition> definitions)
     {
-        if (notifying_)
+        if (notifying_ || completingEdits_)
             return std::unexpected(Error{"template", "Cannot replace definitions from a notification"});
         std::map<std::string, const SettingDefinition*, std::less<>> index;
         std::set<std::string> ids;
@@ -197,7 +197,7 @@ namespace LWSSettings
     }
     Status SettingsDocument::ReplaceValues(Values values)
     {
-        if (notifying_)
+        if (notifying_ || completingEdits_)
             return std::unexpected(Error{"values", "Cannot replace values from a notification"});
         Values replacement;
         for (const auto& [id, definition] : index_)
@@ -402,7 +402,7 @@ namespace LWSSettings
     }
     void SettingsDocument::AutoSave()
     {
-        if (config_.savePolicy == SavePolicy::OnCommit)
+        if (!autoSaveSuspended_ && config_.savePolicy == SavePolicy::OnCommit)
         {
             // Finishing a draft and then applying it can reach autosave twice.
             // Skip only a snapshot we actually saved; failed/never-saved writes still retry.
@@ -415,6 +415,10 @@ namespace LWSSettings
     }
     Status SettingsDocument::Persist()
     {
+        return PersistValues(applied_);
+    }
+    Status SettingsDocument::PersistValues(Values snapshot)
+    {
         if (config_.valuesFile.empty())
         {
             Error error{"save", "No valuesFile was configured"};
@@ -422,7 +426,6 @@ namespace LWSSettings
             OnPersistenceChanged.Raise();
             return std::unexpected(error);
         }
-        auto snapshot = applied_;
         Status result;
         try
         {
@@ -443,6 +446,70 @@ namespace LWSSettings
         persistence_ = {PersistenceState::Saved, {}};
         OnPersistenceChanged.Raise();
         return {};
+    }
+    Status SettingsDocument::CompleteEdits(Completion completion, const std::vector<std::string>& discarded,
+                                            const std::function<Status()>& prepare)
+    {
+        if (notifying_ || completingEdits_)
+            return std::unexpected(Error{"edit", "Cannot complete edits during another document operation"});
+        LWSUI::ScopedFlag completing(completingEdits_, true);
+        const auto working = working_, applied = applied_, saved = saved_, starts = editStarts_;
+        bool restored = false;
+        const auto restore = [&]
+        {
+            if (std::exchange(restored, true)) return;
+            const auto previousWorking = working_, previousApplied = applied_;
+            working_ = working; applied_ = applied; saved_ = saved; editStarts_ = starts;
+            notifications_.clear();
+            QueueDifferences(previousWorking, working_, EditPhase::Cancel, ChangeOrigin::Load,
+                             config_.applyPolicy == ApplyPolicy::Immediate ? ValueDomain::Applied : ValueDomain::Working);
+            if (config_.applyPolicy == ApplyPolicy::OnApply)
+                QueueDifferences(previousApplied, applied_, EditPhase::Cancel, ChangeOrigin::Load, ValueDomain::Applied);
+            Notify();
+            OnValuesReload.Raise();
+        };
+        const bool previousAutoSave = autoSaveSuspended_;
+        LWSUI::ScopedFlag suspend(autoSaveSuspended_, true);
+        try
+        {
+            if (prepare)
+            {
+                auto result = prepare();
+                if (!result) { restore(); return result; }
+            }
+            if (completion == Completion::Discard)
+            {
+                RevertSaved();
+                return {};
+            }
+            for (const auto& id : discarded)
+            {
+                const auto value = WorkingValue(id);
+                if (!value) { restore(); return std::unexpected(Error{id, "Unknown discarded field"}); }
+                auto result = SetValue(id, *value, EditPhase::Cancel, ChangeOrigin::User);
+                if (!result) { restore(); return result; }
+            }
+            // Cancellation callbacks may finish companion edits. Commit only edits still pending.
+            const auto pending = editStarts_;
+            for (const auto& [id, start] : pending)
+                if (IsEditing(id))
+                {
+                    auto result = SetValue(id, working_.at(id), EditPhase::Commit, ChangeOrigin::User);
+                    if (!result) { restore(); return result; }
+                }
+            if (completion == Completion::Apply) autoSaveSuspended_ = previousAutoSave;
+            auto result = Apply();
+            if (result && completion == Completion::Save) result = Persist();
+            if (!result && completion == Completion::Save) restore();
+            if (result && completion == Completion::Apply && config_.savePolicy == SavePolicy::OnCommit && persistence_.error)
+                return std::unexpected(*persistence_.error);
+            return result;
+        }
+        catch (...)
+        {
+            restore();
+            throw;
+        }
     }
     Status SettingsDocument::Save()
     {

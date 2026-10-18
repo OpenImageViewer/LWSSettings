@@ -71,6 +71,8 @@ int main(int argc, char** argv)
 #endif
     LWSSettings::EditorConfig config;
     config.document.valuesFile = "user-settings.json";
+    config.saveValidationPolicy = LWSSettings::FormValidationPolicy::ShowDecisionDialog;
+    config.closeValidationPolicy = LWSSettings::FormValidationPolicy::ShowDecisionDialog;
     int smokeMilliseconds = 0;
     bool snapshot = false;
     std::filesystem::path themeFile = "theme.json", exportTheme, exportTemplate;

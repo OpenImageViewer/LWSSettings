@@ -181,7 +181,8 @@ with tempfile.TemporaryDirectory(prefix="run-", dir=scratch) as temporary:
             stdout, stderr = process.communicate(timeout=10)
             assert process.returncode == 0 and not stdout and not stderr, (process.returncode, stdout, stderr)
             assert not (hotkey / "theme.json").exists()
-            assert not (hotkey / "user-settings.json").exists()
+            saved_settings = json.loads((hotkey / "user-settings.json").read_text())
+            assert saved_settings["version"] == 1 and isinstance(saved_settings["values"], dict)
             checks += 1
         finally:
             if process.poll() is None:

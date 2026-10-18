@@ -16,6 +16,12 @@ namespace LWSSettings
         LWSUI::EditPhase focusLossPhase = LWSUI::EditPhase::Commit;
     };
     enum class SettingValueFilter { All, Changed, Default };
+    enum class FormValidationPolicy { SaveValidFields, ShowDecisionDialog };
+    struct ValidationDialogOptions
+    {
+        bool saveValidFields = true;
+        bool discardAll = true;
+    };
     class SettingsView : public LWSUI::Container
     {
       public:
@@ -31,9 +37,19 @@ namespace LWSSettings
         void SetTheme(const SettingsTheme& theme);
         // Throws std::logic_error if externally hosted header content has been removed.
         LWSUI::StackPanel& HeaderActions();
+        // Optional controls above the form action buttons.
+        LWSUI::StackPanel& OperationOptions();
         // Applies presentation to existing rows in one pass; reset behavior stays in the document.
         void SetRowResetPresentation(const std::function<RowResetPresentation(std::string_view)>& present);
         bool Finish(LWSUI::EditPhase phase) override;
+        // Returns false for unknown fields. An empty policy restores host inheritance.
+        bool SetFieldInvalidEditPolicy(std::string_view id, std::optional<LWSUI::InvalidEditPolicy> policy);
+        void SetSaveValidationPolicy(FormValidationPolicy policy) { saveValidationPolicy_ = policy; }
+        void SetSaveDialogOptions(ValidationDialogOptions options) { saveDialogOptions_ = options; }
+        // Cancellation never depends on field navigation behavior.
+        bool PrepareClose();
+        bool FinishForClose(FormValidationPolicy policy, ValidationDialogOptions options = {},
+                            std::function<void()> closed = {});
         const std::string& ValidationMessage() const { return validation_; }
         void Report(const Status& status);
 
@@ -63,17 +79,37 @@ namespace LWSSettings
         void ReloadValues();
         enum class Command { Save, Apply, Reset, ResetAll, Cancel, Revert };
         void Execute(Command command);
-        Status SaveChanges();
+        bool HandleFormCommand(const LWSUI::Input& input);
         void UpdateFilter();
         void RequestFilterUpdate();
         void StyleFilterButtons();
         void ClearSearch();
         void SetGroupsExpanded(bool expanded);
+        bool PrepareNavigation();
         void UpdateGroupActions();
         void Describe(const std::string& title, const std::string& path, const std::string& text);
         void StyleLocation();
         void RememberSetting(LWSUI::Control* clicked);
         void RestoreSelectedDescription();
+        enum class FormOperation { Save, Apply, Close };
+        enum class FormAction { SaveValidFields, DiscardAll };
+        struct InvalidField
+        {
+            std::string id, label;
+            LWSUI::ControlHandle editor;
+            std::vector<LWSUI::ValidationIssue> issues;
+        };
+        using ValidationResults = std::vector<InvalidField>;
+        ValidationResults CollectInvalidFields() const;
+        static std::string FormatValidation(const ValidationResults& invalid);
+        bool RequestOperation(FormOperation operation, FormValidationPolicy policy, ValidationDialogOptions options,
+                              std::function<void()> closed = {});
+        bool CompleteOperation(FormOperation operation, FormAction action, const ValidationResults& invalid);
+        void ShowValidationDecision(FormOperation operation, ValidationDialogOptions options,
+                                    const ValidationResults& invalid, std::function<void()> closed);
+        FormValidationPolicy saveValidationPolicy_ = FormValidationPolicy::ShowDecisionDialog;
+        ValidationDialogOptions saveDialogOptions_;
+        bool decisionPending_ = false;
         void UpdateStatus();
         void ClearStatus();
         SettingsDocument& document_;
@@ -103,12 +139,14 @@ namespace LWSSettings
         LWSUI::TextBox* location_;
         LWSUI::Label* status_;
         LWSUI::FlowPanel* actions_;
+        LWSUI::StackPanel* operationOptions_;
         std::vector<LWSUI::Button*> primaryActions_;
         std::string filter_, validation_, operationError_, information_, selectedSetting_;
+        std::map<std::string, std::optional<LWSUI::InvalidEditPolicy>, std::less<>> fieldValidation_;
         // Sorted by ID for lookup; visual order belongs to the control tree.
         // Sorting unique_ptrs preserves the addresses captured by editor callbacks.
         std::vector<std::unique_ptr<Binding>> bindings_;
-        bool reloadingValues_ = false;
+        bool reloadingValues_ = false, preservingDrafts_ = false;
         struct Group
         {
             LWSUI::TreeView::Branch* branch;
@@ -116,6 +154,7 @@ namespace LWSSettings
         };
         std::vector<Group> groups_;
         std::vector<LWSUI::Event<void()>::Connection> clicks_, hovers_;
+        LWSUI::Event<void(const LWSUI::Input&, bool&)>::Connection commandConnection_;
         LWSUI::Event<void(const std::string&, LWSUI::EditPhase)>::Connection searchConnection_;
         LWSUI::Event<void(const Change&)>::Connection changeConnection_;
         LWSUI::Event<void(const std::string&, EditPhase, ChangeOrigin)>::Connection finishedConnection_;

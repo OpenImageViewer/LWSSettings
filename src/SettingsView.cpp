@@ -136,7 +136,11 @@ namespace LWSSettings
                     {
                         editor = &control;
                         refresh = [&control](const Value& v) { control.SetValue(std::get<T>(v)); };
-                        connections.Connect(control.OnEdit, [edit](T value, auto phase) { (void) edit(value, phase); });
+                        connections.Connect(control.OnEdit, [edit, &control](T value, auto phase)
+                        {
+                            auto result = edit(value, phase);
+                            control.SetValidation(result ? std::string{} : result.error().message);
+                        });
                     };
                     if (spec.presentation == NumericPresentation::Slider)
                     {
@@ -256,6 +260,8 @@ namespace LWSSettings
             button->sizeToContent = button->flat = true;
             button->focusLossPhase = command == Command::Cancel || command == Command::Revert
                                         ? LWSUI::EditPhase::Cancel : LWSUI::EditPhase::Commit;
+            button->preserveEditOnFocus = command == Command::Save || command == Command::Apply;
+            button->allowDuringPopup = button->preserveEditOnFocus;
             if (primary) primaryActions_.push_back(button.get());
             clicks_.push_back(button->OnClick.Connect([this, command] { Execute(command); }));
             actions_->AddItem(std::move(button));
@@ -294,7 +300,11 @@ namespace LWSSettings
         auto searchPanel = std::make_unique<LWSUI::Panel>(std::move(flow));
         searchPanel_ = searchPanel.get();
         layout_->AddDocked(std::move(searchPanel), LWSUI::Dock::Top);
-        auto footer = std::make_unique<LWSUI::Panel>(take(actions_));
+        auto footerContent = std::make_unique<LWSUI::StackPanel>();
+        operationOptions_ = &footerContent->Emplace<LWSUI::StackPanel>();
+        operationOptions_->SetVisible(false);
+        footerContent->Add(take(actions_));
+        auto footer = std::make_unique<LWSUI::Panel>(std::move(footerContent));
         footerPanel_ = footer.get();
         auto treePanel = std::make_unique<LWSUI::Panel>(take(treeScroll_));
         treePanel_ = treePanel.get();
@@ -313,6 +323,7 @@ namespace LWSSettings
         changeConnection_ = document_.OnChange.Connect([this](const Change& change) { Refresh(change); });
         finishedConnection_ = document_.OnEditFinished.Connect([this](const std::string& id, EditPhase, ChangeOrigin)
         {
+            if (preservingDrafts_) return;
             if (auto* binding = FindBinding(id)) binding->editVisibility.reset();
             if (valueFilter_ != SettingValueFilter::All) RequestFilterUpdate();
         });
@@ -320,7 +331,7 @@ namespace LWSSettings
         refreshConnection_ = document_.OnRefresh.Connect(
             [this](const std::string& id)
             {
-                if (auto* binding = FindBinding(id); binding && !binding->updating)
+                if (auto* binding = FindBinding(id); binding && !binding->updating && !preservingDrafts_)
                     binding->refresh(*document_.WorkingValue(id));
             });
         reloadConnection_ = document_.OnReload.Connect([this] { Rebuild(); });
@@ -332,11 +343,17 @@ namespace LWSSettings
     SettingsView::~SettingsView() = default;
     void SettingsView::OnDetach()
     {
+        commandConnection_ = {};
+        decisionPending_ = false;
         filterPending_ = false;
         filterDirty_ = true;
     }
     void SettingsView::OnAttach()
     {
+        commandConnection_ = Host()->OnCommandInput.Connect([this](const LWSUI::Input& input, bool& handled)
+        {
+            if (!handled && Host()->HasPopupWithin(*this)) handled = HandleFormCommand(input);
+        });
         if (filterDirty_)
             RequestFilterUpdate();
     }
@@ -351,6 +368,11 @@ namespace LWSSettings
         auto* header = ownedHeader_ ? ownedHeader_ : static_cast<internal::SettingsHeader*>(externalHeader_.Get());
         if (!header) throw std::logic_error("Settings header content is no longer available");
         return header->Actions();
+    }
+    LWSUI::StackPanel& SettingsView::OperationOptions()
+    {
+        operationOptions_->SetVisible(true);
+        return *operationOptions_;
     }
     void SettingsView::MoveHeaderTo(LWSUI::MenuBar& bar)
     {
@@ -441,21 +463,33 @@ namespace LWSSettings
             binding->reset->focusLossPhase = state.focusLossPhase;
         }
     }
+    bool SettingsView::HandleFormCommand(const LWSUI::Input& input)
+    {
+        if (input.kind != LWSUI::InputKind::KeyDown || !input.control || input.alt) return false;
+        if (input.key == LWS::KeyCode::S) { Execute(Command::Save); return true; }
+        if (input.key == LWS::KeyCode::Enter) { Execute(Command::Apply); return true; }
+        return false;
+    }
     void SettingsView::Execute(Command command)
     {
+        if (decisionPending_) return;
+        if (command == Command::Save || command == Command::Apply)
+        {
+            RequestOperation(command == Command::Save ? FormOperation::Save : FormOperation::Apply,
+                             saveValidationPolicy_, saveDialogOptions_);
+            return;
+        }
         const bool cancel = command == Command::Cancel || command == Command::Revert;
         const auto phase = cancel ? LWSUI::EditPhase::Cancel : LWSUI::EditPhase::Commit;
-        if (Host() ? !Host()->Finish(phase) : !Finish(phase)) return;
+        if (Host() ? !Host()->Finish(phase) : !Finish(phase))
+            return;
         Status result;
         std::string message;
         switch (command)
         {
             case Command::Save:
-                result = SaveChanges(); message = "Saved"; break;
             case Command::Apply:
-                result = document_.Apply();
-                if (result && document_.Persistence().error) result = std::unexpected(*document_.Persistence().error);
-                message = "Applied"; break;
+                return;
             case Command::ResetAll:
                 result = document_.ResetAll(); break;
             case Command::Reset:
@@ -471,19 +505,9 @@ namespace LWSSettings
         information_ = result ? std::move(message) : std::string{};
         Report(result);
     }
-    Status SettingsView::SaveChanges()
-    {
-        auto result = document_.Apply();
-        if (!result)
-            return result;
-        // Apply already saves in OnCommit mode. An explicit second write adds no value
-        // and could turn a successful save into an unrelated second-write failure.
-        if (document_.Config().savePolicy == SavePolicy::OnCommit)
-            return document_.Persistence().error ? Status{std::unexpected(*document_.Persistence().error)} : Status{};
-        return document_.Save();
-    }
     void SettingsView::ReloadValues()
     {
+        if (preservingDrafts_) return;
         // Cancel the old popup session without publishing its old value over the reload.
         // Keep the controls, focus, filter, scroll offset and expansion state intact.
         {
@@ -645,6 +669,10 @@ namespace LWSSettings
                 };
                 auto editor = binding->CreateEditor(setting, edit);
                 binding->editor->SetStyle(theme_.controls);
+                if (auto config = fieldValidation_.find(binding->id); config != fieldValidation_.end())
+                {
+                    binding->editor->SetInvalidEditPolicy(config->second);
+                }
                 auto action = std::make_unique<LWSUI::Button>("Reset");
                 auto& reset = *action;
                 auto& row = parent.Emplace<LWSUI::TreeView::Row>(std::move(label), std::move(editor), std::move(action));
@@ -686,6 +714,7 @@ namespace LWSSettings
     }
     void SettingsView::Refresh(const Change& change)
     {
+        if (preservingDrafts_) return;
         auto* binding = FindBinding(change.id);
         if (binding)
         {
@@ -744,8 +773,7 @@ namespace LWSSettings
             auto* action = view.groupButtons_[expanded ? 0 : 1];
             if (view.filterPending_ || !view.filter_.empty() ||
                 view.valueFilter_ != SettingValueFilter::All || !action->Enabled()) return;
-            if (view.Host() ? !view.Host()->Finish(LWSUI::EditPhase::Commit)
-                            : !view.Finish(LWSUI::EditPhase::Commit)) return;
+            if (!view.PrepareNavigation()) return;
             // Finishing an edit can synchronously change the filter through a subscriber.
             if (view.filterPending_ || !view.filter_.empty() ||
                 view.valueFilter_ != SettingValueFilter::All || !action->Enabled()) return;
@@ -796,10 +824,19 @@ namespace LWSSettings
                 button->SetForeground(active ? style.accent : style.foreground);
             }
     }
+    bool SettingsView::PrepareNavigation()
+    {
+        if (Host() && !Host()->Focus(nullptr))
+        {
+            Finish(LWSUI::EditPhase::Commit);
+            return false;
+        }
+        return search_->Finish(LWSUI::EditPhase::Commit);
+    }
     void SettingsView::SetValueFilter(SettingValueFilter filter)
     {
         if (filter == valueFilter_ || size_t(filter) >= filterButtons_.size()) return;
-        if (Host() && !Host()->Finish(LWSUI::EditPhase::Commit)) return;
+        if (!PrepareNavigation()) return;
         valueFilter_ = filter;
         StyleFilterButtons();
         RequestFilterUpdate();
@@ -852,16 +889,19 @@ namespace LWSSettings
             if (!visible && binding->row->Visible() && Host() &&
                 (Host()->HasFocusWithin(*binding->row) || Host()->HasPopupWithin(*binding->row)))
             {
-                // A reset/reload has already replaced the old popup's value. Do not
-                // publish a stale preview or cancellation over that replacement.
+                const bool invalid = !LWSUI::UIHost::CollectValidationIssues(*binding->editor).empty();
+                if (!invalid)
                 {
+                    // Reset and reload already replaced the value. Do not publish a stale popup.
                     LWSUI::ScopedFlag restore(reloadingValues_, true);
                     Host()->ClosePopup(LWSUI::EditPhase::Cancel);
                     binding->refresh(*document_.WorkingValue(binding->id));
                 }
-                if (!Host()->Focus(filterButtons_[size_t(valueFilter_)])) visible = true;
+                // Keep retained drafts available to form validation even when their rows are hidden.
+                if ((invalid && Host()->HasPopupWithin(*binding->row)) ||
+                    !Host()->Focus(filterButtons_[size_t(valueFilter_)])) visible = true;
             }
-            binding->row->SetVisible(visible);
+            binding->row->SetVisible(visible, false);
             any |= visible;
         }
         const bool filtering = !filter_.empty() || valueFilter_ != SettingValueFilter::All;
@@ -871,15 +911,155 @@ namespace LWSSettings
             for (auto& child : it->branch->Content().Children()) visible |= child->Visible();
             if (!visible && Host() && Host()->HasFocusWithin(*it->branch))
                 Host()->Focus(filterButtons_[size_t(valueFilter_)]);
-            it->branch->SetVisible(visible);
+            it->branch->SetVisible(visible, false);
             it->branch->RevealForSearch(filtering);
         }
         if (empty_) empty_->SetVisible(!any);
         UpdateGroupActions();
         Invalidate(true);
     }
+    bool SettingsView::SetFieldInvalidEditPolicy(std::string_view id, std::optional<LWSUI::InvalidEditPolicy> policy)
+    {
+        auto* binding = FindBinding(id);
+        if (!binding) return false;
+        binding->editor->SetInvalidEditPolicy(policy);
+        fieldValidation_[std::string(id)] = policy;
+        return true;
+    }
+    SettingsView::ValidationResults SettingsView::CollectInvalidFields() const
+    {
+        ValidationResults invalid;
+        const auto collect = [&](std::string id, std::string label, LWSUI::Control& editor)
+        {
+            auto issues = LWSUI::UIHost::CollectValidationIssues(editor);
+            if (!issues.empty())
+                invalid.push_back({std::move(id), std::move(label), editor.Handle(), std::move(issues)});
+        };
+        for (const auto& binding : bindings_) collect(binding->id, binding->label->Text(), *binding->editor);
+        if (Host() && Host()->MainMenu()) collect({}, "Header", *Host()->MainMenu());
+        return invalid;
+    }
+    std::string SettingsView::FormatValidation(const ValidationResults& invalid)
+    {
+        std::string message;
+        for (const auto& field : invalid)
+        {
+            message += field.label + ": ";
+            for (size_t i = 0; i < field.issues.size(); ++i)
+            {
+                if (i) message += ", ";
+                message += field.issues[i].message;
+            }
+            message += "\n";
+        }
+        return message;
+    }
+    bool SettingsView::PrepareClose()
+    {
+        return !decisionPending_;
+    }
+    bool SettingsView::CompleteOperation(FormOperation operation, FormAction action, const ValidationResults& invalid)
+    {
+        std::vector<std::string> discarded;
+        for (const auto& field : invalid) if (!field.id.empty()) discarded.push_back(field.id);
+        const auto completion = action == FormAction::DiscardAll ? SettingsDocument::Completion::Discard
+            : operation == FormOperation::Apply ? SettingsDocument::Completion::Apply : SettingsDocument::Completion::Save;
+        Status result;
+        {
+            // The model can finalize and roll back without replacing visible drafts or popup sessions.
+            LWSUI::ScopedFlag preserve(preservingDrafts_, true);
+            result = document_.CompleteEdits(completion, discarded, [&]() -> Status
+            {
+                // Extension controls have their own completion contract. Their callbacks
+                // must succeed before the document chooses its persistence snapshot.
+                const auto phase = completion == SettingsDocument::Completion::Discard
+                    ? LWSUI::EditPhase::Cancel : LWSUI::EditPhase::Commit;
+                if ((Host() && Host()->MainMenu() && !Host()->MainMenu()->Finish(phase)) ||
+                    !operationOptions_->Finish(phase) || !search_->Finish(phase))
+                    return std::unexpected(Error{"edit", "Correct the auxiliary input before continuing"});
+                return {};
+            });
+        }
+        Report(result);
+        if (!result)
+        {
+            if (operation != FormOperation::Apply && Host())
+                Host()->ShowDecisionBox(*this, "Cannot save settings", operationError_, {}, "Keep editing");
+            return false;
+        }
+        // Typed transactions are already complete. Reconcile controls without publishing them again.
+        {
+            LWSUI::ScopedFlag reload(reloadingValues_, true);
+            if (Host()) Host()->ClosePopup(LWSUI::EditPhase::Cancel);
+            for (const auto& field : invalid)
+                if (field.id.empty())
+                    if (auto* editor = field.editor.Get()) editor->Finish(LWSUI::EditPhase::Cancel);
+            ReloadValues();
+        }
+        information_ = completion == SettingsDocument::Completion::Discard ? "Restored saved values"
+            : completion == SettingsDocument::Completion::Apply ? "Applied" : "Saved";
+        UpdateStatus();
+        return true;
+    }
+    bool SettingsView::RequestOperation(FormOperation operation, FormValidationPolicy policy,
+                                        ValidationDialogOptions options, std::function<void()> closed)
+    {
+        if (decisionPending_) return false;
+        const auto invalid = CollectInvalidFields();
+        if (!invalid.empty() && policy == FormValidationPolicy::ShowDecisionDialog)
+        {
+            ShowValidationDecision(operation, options, invalid, std::move(closed));
+            return false;
+        }
+        return CompleteOperation(operation, FormAction::SaveValidFields, invalid);
+    }
+    void SettingsView::ShowValidationDecision(FormOperation operation, ValidationDialogOptions options,
+                                               const ValidationResults& invalid, std::function<void()> closed)
+    {
+        if (!Host()) return;
+        const bool closing = operation == FormOperation::Close;
+        const bool applying = operation == FormOperation::Apply;
+        validation_ = "Invalid fields:\n" + FormatValidation(invalid);
+        UpdateStatus();
+        const auto choose = [this, operation, closed](FormAction action)
+        {
+            decisionPending_ = false;
+            // Dialogs are asynchronous. Resolve fresh fields rather than retaining editor pointers.
+            if (CompleteOperation(operation, action, CollectInvalidFields()) && operation == FormOperation::Close && closed)
+                closed();
+        };
+        std::vector<LWSUI::UIHost::DecisionAction> actions;
+        if (options.saveValidFields)
+            actions.push_back({closing ? "Save valid fields and close" : applying ? "Apply valid fields" : "Save valid fields",
+                               [choose] { choose(FormAction::SaveValidFields); }});
+        if (closing && options.discardAll)
+            actions.push_back({"Discard all and close", [choose] { choose(FormAction::DiscardAll); }});
+        decisionPending_ = Host()->ShowDecisionBox(*this, closing ? "Close settings" : applying ? "Apply settings" : "Save settings",
+            validation_ + "\nSaving valid fields discards invalid drafts back to their edit-start values.",
+            std::move(actions), closing ? "Cancel close" : "Keep editing", [this] { decisionPending_ = false; });
+    }
+    bool SettingsView::FinishForClose(FormValidationPolicy policy, ValidationDialogOptions options,
+                                      std::function<void()> closed)
+    {
+        if (decisionPending_)
+        {
+            if (Host()) Host()->ClosePopup(LWSUI::EditPhase::Cancel);
+            return false;
+        }
+        return RequestOperation(FormOperation::Close, policy, options, std::move(closed));
+    }
     bool SettingsView::Finish(LWSUI::EditPhase phase)
     {
+        if (phase == LWSUI::EditPhase::Commit)
+        {
+            const auto errors = CollectInvalidFields();
+            if (!errors.empty())
+            {
+                validation_ = "Correct the following fields before saving:\n" + FormatValidation(errors);
+                UpdateStatus();
+                return false;
+            }
+        }
         if (!Container::Finish(phase))
         {
             validation_ = "Correct the invalid draft or press Escape to cancel it.";
@@ -920,8 +1100,7 @@ namespace LWSSettings
             Host()->Focus(search_);
             return true;
         }
-        if (input.control && input.key == Key::S) { Execute(Command::Save); return true; }
-        if (input.control && input.key == Key::Enter) { Execute(Command::Apply); return true; }
+        if (HandleFormCommand(input)) return true;
         if (input.control && input.key == Key::R)
         {
             Execute(input.shift ? Command::ResetAll : Command::Reset);

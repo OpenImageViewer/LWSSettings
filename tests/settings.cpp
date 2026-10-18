@@ -36,6 +36,7 @@ namespace LWSUI::internal
     struct UIHostTestAccess
     {
         static void RenderTooltip(UIHost& host, Canvas& canvas) { host.RenderTooltip(canvas); }
+        static Control* Popup(UIHost& host) { return host.popup_.get(); }
     };
 }
 using LWSUI::NextCharacter;
@@ -77,6 +78,14 @@ namespace
             REQUIRE(platform.ProcessMessages() == LWS::LoopResult::Continue);
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         } while (std::chrono::steady_clock::now() < until);
+    }
+    EditorConfig SaveValidCloseConfig()
+    {
+        EditorConfig config;
+        config.closeValidationPolicy = FormValidationPolicy::SaveValidFields;
+        config.document.valuesFile = "unused.json";
+        config.document.writeValues = [](const auto&, const auto&) -> Status { return {}; };
+        return config;
     }
     Json Template()
     {
@@ -1072,7 +1081,7 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
     REQUIRE_FALSE(rejected);
     REQUIRE(rejected.error().location == "sections/controls/metrics/checkerSize");
     REQUIRE(invalidEditor.View() == nullptr);
-    EditorConfig config;
+    EditorConfig config = SaveValidCloseConfig();
     config.theme.description.accent = LLUtils::Color{uint32_t{0x22bb88ff}};
     config.theme.footer.muted = LLUtils::Color{uint32_t{0xaabbccff}};
     SettingsEditor editor(platform, config);
@@ -1228,7 +1237,7 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
     Draft(*themeText, "#334455ff");
     host->Update();
     REQUIRE(Controls<LWSUI::ScrollView>(*editor.View())[1]->Style().background == LLUtils::Color{uint32_t{0x334455ff}});
-    REQUIRE(themeText->Text() == "#334455ff");
+    REQUIRE(themeText->Text() == "#33-44-55-FF");
     REQUIRE(reset->Text() == "Use inherited");
     REQUIRE(reset->Enabled());
     REQUIRE(internal::ThemeEditorTestAccess::Editor(themeEditor).View()->Host()->IsFocused(*themeText));
@@ -1622,6 +1631,7 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
     host->Update();
     auto* numeric = FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View());
     auto* numericText = FindControl<LWSUI::TextBox>(*numeric);
+    host->SetInvalidEditPolicy(LWSUI::InvalidEditPolicy::BlockOnLeave);
     REQUIRE(host->Focus(numericText));
     Draft(*numericText, "-");
     ClickButton(*collapseAll);
@@ -2217,6 +2227,7 @@ TEST_CASE("Combo popup hover owns hit testing and description without changing v
         input.x = bounds.x + offset; input.y = bounds.y + bounds.height / 2;
         host.Route(input); input.kind = Kind::Up; host.Route(input);
     };
+    host.SetInvalidEditPolicy(LWSUI::InvalidEditPolicy::BlockOnLeave);
     REQUIRE(host.Focus(&edit)); Draft(edit, "invalid draft"); edit.SetValidation("Invalid");
     const auto draft = edit.Text();
     menuKey(Key::F10, true);
@@ -2898,6 +2909,25 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
     REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0x00ff0080}});
     key(Key::Enter);
     REQUIRE(host.HasPopup()); // Enter in a field commits that field, not the popup.
+    draft("0,255,0,128");
+    key(Key::Enter);
+    REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0x00ff0080}});
+    REQUIRE(FindControl<LWSUI::TextBox>(picker)->Text() == "#00-FF-00-80");
+    key(Key::Escape);
+    REQUIRE_FALSE(host.HasPopup());
+    REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0xff000080}});
+    REQUIRE(FindControl<LWSUI::TextBox>(picker)->Text() == "#FF-00-00-80");
+    KeyPress(*FindControl<LWSUI::ColorSwatch>(picker), Key::Enter);
+    host.Update();
+    for (int i = 0; i < 16; ++i) key(Key::Tab);
+    draft("0,255,0,128");
+    key(Key::Enter);
+    draft("0x00ff0080");
+    key(Key::Enter);
+    REQUIRE(FindControl<LWSUI::TextBox>(picker)->Text() == "#00-FF-00-80");
+    draft("#00ff0080");
+    key(Key::Enter);
+    REQUIRE(FindControl<LWSUI::TextBox>(picker)->Text() == "#00-FF-00-80");
     draft("#bad");
     REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0x00ff0080}});
     key(Key::Down, false, true); // Invalid hex blocks picker-wide adjustment.
@@ -2907,13 +2937,15 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
     REQUIRE(host.HasPopup());
     host.ClosePopup(Phase::Commit);
     REQUIRE(host.HasPopup());
-    draft("#00ff00");
+    draft("#00ff00ff");
     REQUIRE(picker.Value().A() == 255);
     key(Key::Enter);
     for (int i = 0; i < 13; ++i) key(Key::Tab, true); // New hex -> R value.
     draft("256");
     REQUIRE(picker.Value().R() == 0);
-    key(Key::Tab); // Invalid field blocks focus loss.
+    draft("#");
+    host.SetInvalidEditPolicy(LWSUI::InvalidEditPolicy::BlockOnLeave);
+    key(Key::Tab); // Invalid field blocks focus loss under the compatibility policy.
     draft("1.5");
     REQUIRE(picker.Value().R() == 0);
     draft("64"); key(Key::Enter);
@@ -3103,8 +3135,8 @@ TEST_CASE("Details copy read-only text and restore the remembered setting outsid
     LWS::Window window(platform);
     REQUIRE(window.Create({.clientSize = {820, 680}, .visible = true}) == LWS::Result::Success);
     WaitForConfiguration(window);
-    LWSUI::UIHost host(window);
     SettingsDocument document;
+    LWSUI::UIHost host(window);
     auto schema = Template();
     const std::string first = "café 日本語 description";
     const std::string second = "Count description";
@@ -3714,7 +3746,7 @@ TEST_CASE("Label measurement reuse follows content style and host changes", "[re
 TEST_CASE("Settings windows use only minimize and close without a native caption", "[viewer][window-controls]")
 {
     TestPlatform platform;
-    SettingsEditor editor(platform);
+    SettingsEditor editor(platform, SaveValidCloseConfig());
     REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
     REQUIRE(editor.Show());
     auto* host = editor.View()->Host();
@@ -3743,19 +3775,14 @@ TEST_CASE("Settings windows use only minimize and close without a native caption
         REQUIRE(host->Route({.kind = LWSUI::InputKind::KeyDown, .key = LWS::KeyCode::Enter}));
         PumpFor(platform.value, 30);
     };
-    auto* text = FindControl<LWSUI::TextBox>(*editor.View());
+    auto* text = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
     REQUIRE(text != nullptr);
     REQUIRE(host->Focus(text));
-    Draft(*text, "draft");
-    text->SetValidation("Invalid draft");
-    close();
-    REQUIRE(editor.IsVisible());
-    REQUIRE(hidden == 0);
-    text->SetValidation("");
-    KeyPress(*text, LWS::KeyCode::Escape);
+    Draft(*text, "-");
     close();
     REQUIRE_FALSE(editor.IsVisible());
     REQUIRE(hidden == 1);
+    REQUIRE(text->Validation().empty());
     REQUIRE(editor.Show());
     REQUIRE(editor.View()->Host()->MainMenu() == bar);
     REQUIRE(editor.SetTheme(SettingsTheme(LWSUI::ThemePreset::Light)));
@@ -3769,7 +3796,7 @@ TEST_CASE("Settings windows use only minimize and close without a native caption
 TEST_CASE("Settings headers move into the bar without dangling controls", "[viewer][header]")
 {
     TestPlatform platform;
-    EditorConfig config; config.size = {480, 680};
+    EditorConfig config = SaveValidCloseConfig(); config.size = {480, 680};
     SettingsEditor editor(platform, config);
     REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
     REQUIRE(editor.Show());
@@ -3864,7 +3891,7 @@ TEST_CASE("Settings headers move into the bar without dangling controls", "[view
 TEST_CASE("Settings live resize policy survives window recreation", "[viewer][resize]")
 {
     TestPlatform platform;
-    EditorConfig config;
+    EditorConfig config = SaveValidCloseConfig();
     REQUIRE(config.redrawOnResize);
     SECTION("enabled default") {}
     SECTION("configuration opt-out")
@@ -4027,6 +4054,7 @@ TEST_CASE("Save and Apply shortcuts validate relocated header drafts", "[viewer]
     REQUIRE(saves == 0);
     REQUIRE(editor.Document().AppliedValue("name") == Value{std::string{"hello"}});
     REQUIRE(text.Text() == "invalid");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
     text.SetValidation("");
     REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter, .control = true}));
     REQUIRE(editor.Document().AppliedValue("name") == Value{std::string{"pending"}});
@@ -4104,8 +4132,8 @@ TEST_CASE("Description geometry contains its scrollbar with large padding", "[vi
     LWS::Window window(platform);
     REQUIRE(window.Create({.clientSize = {820, 680}, .visible = true}) == LWS::Result::Success);
     WaitForConfiguration(window);
-    LWSUI::UIHost host(window);
     SettingsDocument document;
+    LWSUI::UIHost host(window);
     auto schema = Template();
     std::string description;
     for (int i = 0; i < 100; ++i) description += "A long wrapped description. ";
@@ -4235,3 +4263,851 @@ TEST_CASE("Event window preserves hidden history and supports read-only copying"
     REQUIRE(errors == 0);
 }
 #endif
+
+TEST_CASE("Decimal color editing keeps canonical hexadecimal storage", "[color][storage]")
+{
+    SettingsDocument document;
+    REQUIRE(SettingsStorage::LoadTemplate(document, Template()));
+    SettingsView view(document);
+    auto* picker = FindControl<LWSUI::ColorPicker>(view);
+    REQUIRE(picker);
+    auto* text = FindControl<LWSUI::TextBox>(*picker);
+    REQUIRE(text);
+    Draft(*text, "255,240,210,255");
+    REQUIRE(text->Finish(Phase::Commit));
+    REQUIRE(document.WorkingValue("color") == Value{LLUtils::Color{uint32_t{0xfff0d2ff}}});
+    REQUIRE(text->Text() == "255,240,210,255");
+    REQUIRE(SettingsStorage::EncodeValues(document.WorkingValues())["values"]["color"] == "#fff0d2ff");
+}
+
+TEST_CASE("Settings invalid edit policy restores previews before outside actions", "[viewer][validation][policy]")
+{
+    TestPlatform platform;
+    EditorConfig config;
+    config.saveDialogOptions.saveValidFields = false;
+    config.document.applyPolicy = ApplyPolicy::OnApply;
+    config.document.valuesFile = "unused.json";
+    unsigned saves = 0;
+    config.document.writeValues = [&](const auto&, const Values& values) -> Status
+    {
+        ++saves;
+        REQUIRE(values.at("count") == Value{int64_t{3}});
+        return {};
+    };
+    SettingsEditor editor(platform, config);
+    REQUIRE(editor.GetInvalidEditPolicy() == LWSUI::InvalidEditPolicy::KeepInvalid);
+    editor.SetInvalidEditPolicy(LWSUI::InvalidEditPolicy::BlockOnLeave);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    WaitForConfiguration(host.Window());
+    host.Update();
+    REQUIRE(host.GetInvalidEditPolicy() == LWSUI::InvalidEditPolicy::BlockOnLeave);
+    auto* numeric = FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View());
+    auto* text = FindControl<LWSUI::TextBox>(*numeric);
+    auto* checkbox = FindControl<LWSUI::CheckBox>(*editor.View());
+    REQUIRE(host.Focus(text));
+    Draft(*text, "7"); Draft(*text, "-");
+    REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{7}});
+    REQUIRE_FALSE(host.Focus(checkbox));
+    editor.SetInvalidEditPolicy(LWSUI::InvalidEditPolicy::DiscardOnLeave);
+    REQUIRE(text->Text() == "-");
+    REQUIRE(host.Focus(checkbox));
+    REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{3}});
+    REQUIRE(text->Text() == "3");
+    REQUIRE(editor.View()->ValidationMessage().empty());
+    for (const auto* command : {"Apply", "Save"})
+    {
+        REQUIRE(host.Focus(text));
+        Draft(*text, "8"); Draft(*text, "-");
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true}));
+        host.ClosePopup(LWSUI::EditPhase::Cancel); host.Update();
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter, .control = true}));
+        host.ClosePopup(LWSUI::EditPhase::Cancel); host.Update();
+        REQUIRE(text->Text() == "-");
+        REQUIRE(saves == 0);
+        editor.SetSaveValidationPolicy(FormValidationPolicy::SaveValidFields);
+        ClickButton(*FindButton(*editor.View(), command));
+        host.Update();
+        editor.SetSaveValidationPolicy(FormValidationPolicy::ShowDecisionDialog);
+        REQUIRE(text->Text() == "3");
+        REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{3}});
+        REQUIRE(editor.Document().AppliedValue("count") == Value{int64_t{3}});
+    }
+    REQUIRE(saves == 1);
+    REQUIRE(host.Focus(text)); Draft(*text, "-");
+    ClickButton(*FindButton(*editor.View(), "Collapse all"));
+    host.Update();
+    REQUIRE(text->Text() == "3");
+    REQUIRE(editor.View()->ValidationMessage().empty());
+    REQUIRE(editor.Hide());
+    REQUIRE(editor.Show());
+    REQUIRE(editor.View()->Host()->GetInvalidEditPolicy() == LWSUI::InvalidEditPolicy::DiscardOnLeave);
+}
+TEST_CASE("Invalid color popup departure restores its opening presentation and delivers one click", "[viewer][color][policy]")
+{
+    TestPlatform platform;
+    LWS::Window window(platform);
+    REQUIRE(window.Create({.clientSize = {820, 680}, .visible = true}) == LWS::Result::Success);
+    WaitForConfiguration(window);
+    LWSUI::UIHost host(window);
+    auto root = std::make_unique<LWSUI::DockPanel>();
+    auto& action = static_cast<LWSUI::Button&>(root->AddDocked(std::make_unique<LWSUI::Button>("Outside"), LWSUI::Dock::Top, 36));
+    auto& picker = static_cast<LWSUI::ColorPicker&>(root->AddDocked(std::make_unique<LWSUI::ColorPicker>(), LWSUI::Dock::Bottom, 36));
+    const LLUtils::Color original{uint32_t{0x11223344}};
+    picker.SetValue(original);
+    unsigned clicks = 0;
+    auto clicked = action.OnClick.Connect([&] { ++clicks; REQUIRE(picker.Value() == original); });
+    host.SetRoot(std::move(root)); host.Update();
+    KeyPress(*FindControl<LWSUI::ColorSwatch>(picker), Key::Enter);
+    host.Update();
+    REQUIRE(host.HasPopup());
+    for (unsigned i = 0; i < 16; ++i) REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Tab}));
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::A, .control = true}));
+    REQUIRE(host.Route({.kind = Kind::Text, .text = "255,0,0,255"}));
+    REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0xff0000ff}});
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::A, .control = true}));
+    REQUIRE(host.Route({.kind = Kind::Text, .text = "#ab"}));
+    REQUIRE(FindControl<LWSUI::ColorSwatch>(picker)->Value() == LLUtils::Color{uint32_t{0xab0000ff}});
+    REQUIRE(picker.Value() == LLUtils::Color{uint32_t{0xff0000ff}});
+    host.SetInvalidEditPolicy(LWSUI::InvalidEditPolicy::BlockOnLeave);
+    ClickButton(action);
+    REQUIRE(host.HasPopup()); REQUIRE(clicks == 0);
+    host.SetInvalidEditPolicy(LWSUI::InvalidEditPolicy::DiscardOnLeave);
+    ClickButton(action);
+    REQUIRE_FALSE(host.HasPopup());
+    REQUIRE(clicks == 1);
+    REQUIRE(picker.Value() == original);
+    REQUIRE(FindControl<LWSUI::TextBox>(picker)->Text() == "#11-22-33-44");
+}
+
+TEST_CASE("Closing discards invalid drafts even when focus departure is blocked", "[viewer][validation][policy][close]")
+{
+    TestPlatform platform;
+    auto config = SaveValidCloseConfig();
+    config.invalidEditPolicy = LWSUI::InvalidEditPolicy::BlockOnLeave;
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto* text = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+    auto* host = editor.View()->Host();
+    REQUIRE(host->Focus(text));
+    Draft(*text, "7"); Draft(*text, "-");
+    REQUIRE(editor.Hide());
+    REQUIRE_FALSE(editor.IsVisible());
+    REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{3}});
+    REQUIRE(text->Text() == "3");
+    REQUIRE(editor.Show());
+    REQUIRE(text->Validation().empty());
+    REQUIRE(editor.Hide());
+}
+
+TEST_CASE("Inline color input preserves hex inference across rendered keystrokes", "[viewer][color][inference]")
+{
+    TestPlatform platform;
+    SettingsEditor editor(platform);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    WaitForConfiguration(host.Window()); host.Update();
+    auto* picker = FindControl<LWSUI::ColorPicker>(*editor.View());
+    auto* text = FindControl<LWSUI::TextBox>(*picker);
+    REQUIRE(host.Focus(text));
+#ifdef LWS_HAS_WIN32_BACKEND
+    const auto hwnd = *LWS::Win32::GetHwnd(host.Window());
+    const std::array nativeModes{false, true};
+#else
+    const std::array nativeModes{false};
+#endif
+    for (const bool native : nativeModes)
+    {
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::A, .control = true}));
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Delete}));
+        REQUIRE(text->Text().empty());
+        host.Update(); PumpFor(platform.value, 5);
+        for (const char digit : std::string("123f"))
+        {
+#ifdef LWS_HAS_WIN32_BACKEND
+            if (native)
+            {
+                const WPARAM key = digit == 'f' ? 'F' : digit;
+                SendMessageW(hwnd, WM_KEYDOWN, key, 1);
+                SendMessageW(hwnd, WM_CHAR, digit, 1);
+                SendMessageW(hwnd, WM_KEYUP, key, 1);
+            }
+            else
+#endif
+                REQUIRE(host.Route({.kind = Kind::Text, .text = std::string(1, digit)}));
+            host.Update(); PumpFor(platform.value, 5); host.Update();
+        }
+        INFO("native input " << native);
+        REQUIRE(text->Text() == "#12-3F-");
+        REQUIRE(FindControl<LWSUI::ColorSwatch>(*picker)->Value() == LLUtils::Color{uint32_t{0x123f00ff}});
+    }
+}
+
+TEST_CASE("Popup RGBA byte fields accept hexadecimal while HSL stays decimal", "[viewer][color][channels]")
+{
+    TestPlatform platform;
+    SettingsEditor editor(platform);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    WaitForConfiguration(host.Window()); host.Update();
+    auto* picker = FindControl<LWSUI::ColorPicker>(*editor.View());
+    KeyPress(*FindControl<LWSUI::ColorSwatch>(*picker), Key::Enter); host.Update();
+    REQUIRE(host.HasPopup());
+    auto key = [&](Key code, bool control = false)
+    { REQUIRE(host.Route({.kind = Kind::KeyDown, .key = code, .control = control})); };
+    auto draft = [&](const char* value)
+    { key(Key::A, true); REQUIRE(host.Route({.kind = Kind::Text, .text = value})); };
+    for (unsigned i = 0; i < 3; ++i) key(Key::Tab);
+    draft("FF"); REQUIRE(picker->Value().R() == 255);
+    key(Key::Tab); key(Key::Tab);
+    draft("#80"); REQUIRE(picker->Value().G() == 128);
+    key(Key::Tab); key(Key::Tab);
+    draft("0x0F"); REQUIRE(picker->Value().B() == 15);
+    key(Key::Tab); key(Key::Tab);
+    draft("0X40"); REQUIRE(picker->Value().A() == 64);
+    const auto color = LLUtils::Color{uint32_t{0xff800f40}};
+    REQUIRE(picker->Value() == color);
+    key(Key::Tab); key(Key::Tab);
+    draft("0x10"); REQUIRE(picker->Value() == color);
+    key(Key::Enter, true);
+    REQUIRE_FALSE(host.HasPopup());
+    REQUIRE(picker->Value() == color);
+}
+
+TEST_CASE("Inline double-click switches notation without saving or changing the color", "[viewer][color][double-click]")
+{
+    TestPlatform platform;
+    EditorConfig config;
+    unsigned saves = 0;
+    config.document.savePolicy = SavePolicy::OnCommit;
+    config.document.valuesFile = "unused.json";
+    config.document.writeValues = [&](const auto&, const auto&) -> Status { ++saves; return {}; };
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    WaitForConfiguration(host.Window()); host.Update();
+    auto* picker = FindControl<LWSUI::ColorPicker>(*editor.View());
+    auto* text = FindControl<LWSUI::TextBox>(*picker);
+    const auto color = picker->Value();
+    const auto original = text->Text();
+    const auto bounds = text->Bounds();
+    auto click = [&](unsigned count)
+    {
+        REQUIRE(host.Route({.kind = Kind::Down, .x = bounds.x + 10, .y = bounds.y + 10, .clickCount = count}));
+        REQUIRE(host.Route({.kind = Kind::Up, .x = bounds.x + 10, .y = bounds.y + 10}));
+    };
+    click(1); click(2);
+    REQUIRE(text->Text().find(',') != std::string::npos);
+    REQUIRE(host.IsFocused(*text)); REQUIRE(picker->Value() == color);
+    REQUIRE(saves == 0); REQUIRE_FALSE(editor.Document().IsDirty());
+    click(1); click(2);
+    REQUIRE(text->Text() == original); REQUIRE(picker->Value() == color);
+    REQUIRE(saves == 0);
+    KeyPress(*text, Key::Escape); REQUIRE(text->Text() == original);
+#ifdef LWS_HAS_WIN32_BACKEND
+    const auto hwnd = *LWS::Win32::GetHwnd(host.Window());
+    const auto scale = host.DrawingScale().value_or(LWS::ContentScale{});
+    const auto point = MAKELPARAM(int((bounds.x + 10) * scale.x), int((bounds.y + 10) * scale.y));
+    const auto nativeDouble = [&]
+    {
+        SendMessageW(hwnd, WM_LBUTTONDOWN, MK_LBUTTON, point);
+        SendMessageW(hwnd, WM_LBUTTONUP, 0, point);
+        SendMessageW(hwnd, WM_LBUTTONDBLCLK, MK_LBUTTON, point);
+        SendMessageW(hwnd, WM_LBUTTONUP, 0, point);
+        host.Update();
+    };
+    nativeDouble(); REQUIRE(text->Text().find(',') != std::string::npos);
+    nativeDouble(); REQUIRE(text->Text() == original);
+    REQUIRE(saves == 0); REQUIRE(picker->Value() == color);
+#endif
+
+}
+
+TEST_CASE("Retained invalid fields are aggregated on save without persisting partial changes", "[viewer][validation][policy]")
+{
+    TestPlatform platform;
+    EditorConfig config;
+    config.document.applyPolicy = ApplyPolicy::OnApply;
+    config.document.valuesFile = "unused.json";
+    unsigned saves = 0;
+    config.document.writeValues = [&](const auto&, const Values&) -> Status { ++saves; return {}; };
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& view = *editor.View();
+    auto& host = *view.Host();
+    WaitForConfiguration(host.Window()); host.Update();
+    auto* count = FindControl<LWSUI::NumericEdit<int64_t>>(view);
+    auto* ratio = FindControl<LWSUI::NumericEdit<double>>(view);
+    auto* countText = FindControl<LWSUI::TextBox>(*count);
+    auto* ratioText = FindControl<LWSUI::TextBox>(*ratio);
+    REQUIRE(host.Focus(countText)); Draft(*countText, "99");
+    REQUIRE(host.Focus(ratioText)); Draft(*ratioText, "-");
+    REQUIRE(countText->Text() == "99");
+    REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{3}});
+    ClickButton(*FindButton(view, "Save")); host.Update();
+    REQUIRE(host.HasPopup()); REQUIRE(saves == 0);
+    REQUIRE(view.ValidationMessage().find("Count") != std::string::npos);
+    REQUIRE(view.ValidationMessage().find("Ratio") != std::string::npos);
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+    REQUIRE_FALSE(host.HasPopup());
+    REQUIRE(host.IsFocused(*ratioText));
+    REQUIRE(countText->Text() == "99"); REQUIRE(ratioText->Text() == "-");
+    Draft(*countText, "8"); Draft(*ratioText, "2.5");
+    ClickButton(*FindButton(view, "Save")); host.Update();
+    REQUIRE(saves == 1); REQUIRE_FALSE(host.HasPopup());
+    REQUIRE(editor.Document().AppliedValue("count") == Value{int64_t{8}});
+    REQUIRE(view.SetFieldInvalidEditPolicy("count", LWSUI::InvalidEditPolicy::BlockOnLeave));
+    REQUIRE_FALSE(view.SetFieldInvalidEditPolicy("missing", LWSUI::InvalidEditPolicy::BlockOnLeave));
+    REQUIRE(host.Focus(countText)); Draft(*countText, "99");
+    REQUIRE_FALSE(host.Focus(ratioText));
+    REQUIRE(view.SetFieldInvalidEditPolicy("count", LWSUI::InvalidEditPolicy::DiscardOnLeave));
+    REQUIRE(host.Focus(ratioText)); REQUIRE(countText->Text() == "8");
+    Draft(*ratioText, "-");
+    editor.SetCloseValidationPolicy(FormValidationPolicy::SaveValidFields);
+    REQUIRE(editor.Hide()); REQUIRE(ratioText->Text() == "2.5");
+}
+
+TEST_CASE("Field navigation behavior never overrides close decisions", "[viewer][validation][policy][close]")
+{
+    TestPlatform platform;
+    for (const auto policy : {LWSUI::InvalidEditPolicy::BlockOnLeave, LWSUI::InvalidEditPolicy::DiscardOnLeave,
+                              LWSUI::InvalidEditPolicy::KeepInvalid})
+    {
+        auto config = SaveValidCloseConfig();
+        config.invalidEditPolicy = policy;
+        config.closeValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+        unsigned writes = 0;
+        config.document.writeValues = [&](const auto&, const auto&) -> Status { ++writes; return {}; };
+        SettingsEditor editor(platform, config);
+        REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+        REQUIRE(editor.Show());
+        auto& host = *editor.View()->Host();
+        auto* text = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+        REQUIRE(host.Focus(text)); Draft(*text, "99");
+        REQUIRE_FALSE(editor.Hide()); REQUIRE(editor.IsVisible()); REQUIRE(writes == 0);
+        auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+        REQUIRE(dialog);
+        REQUIRE(FindButton(*dialog, "Save valid fields and close"));
+        REQUIRE(FindButton(*dialog, "Discard all and close"));
+        REQUIRE(FindButton(*dialog, "Cancel close"));
+        REQUIRE(text->Text() == "99");
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+        REQUIRE(text->Text() == "99"); REQUIRE(host.IsFocused(*text)); REQUIRE(writes == 0);
+        REQUIRE_FALSE(editor.Hide());
+        dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+        FindButton(*dialog, "Save valid fields and close")->OnClick.Raise(); host.Update();
+        REQUIRE_FALSE(editor.IsVisible()); REQUIRE(writes == 1); REQUIRE(text->Text() == "3");
+    }
+}
+
+TEST_CASE("Close decisions suspend and restore invalid color popup drafts", "[viewer][validation][policy][popup]")
+{
+    TestPlatform platform;
+    auto config = SaveValidCloseConfig();
+    config.closeValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    auto* picker = FindControl<LWSUI::ColorPicker>(*editor.View());
+    FindControl<LWSUI::ColorSwatch>(*picker)->OnClick.Raise(); host.Update();
+    auto* popup = LWSUI::internal::UIHostTestAccess::Popup(host);
+    REQUIRE(popup);
+    auto* field = FindControl<LWSUI::TextBox>(*popup);
+    REQUIRE(host.Focus(field)); Draft(*field, "#");
+    REQUIRE_FALSE(editor.Hide());
+    REQUIRE(LWSUI::internal::UIHostTestAccess::Popup(host) != popup);
+    REQUIRE(field->Text() == "#");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+    REQUIRE(LWSUI::internal::UIHostTestAccess::Popup(host) == popup);
+    REQUIRE(host.IsFocused(*field)); REQUIRE(field->Text() == "#");
+    REQUIRE_FALSE(editor.Hide());
+    auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+    FindButton(*dialog, "Discard all and close")->OnClick.Raise(); host.Update();
+    REQUIRE_FALSE(editor.IsVisible()); REQUIRE_FALSE(host.HasPopup());
+    REQUIRE(editor.Document().WorkingValue("color") == Value{LLUtils::Color{uint32_t{0x123456ff}}});
+}
+
+TEST_CASE("Close validation can block through dialog options or silently save valid fields", "[viewer][validation][close]")
+{
+    TestPlatform platform;
+    for (const auto apply : {ApplyPolicy::Immediate, ApplyPolicy::OnApply})
+        for (const auto save : {SavePolicy::Manual, SavePolicy::OnCommit})
+        {
+            EditorConfig config;
+            config.closeDialogOptions = {false, false};
+            config.document.applyPolicy = apply;
+            config.document.savePolicy = save;
+            config.document.valuesFile = "unused.json";
+            unsigned writes = 0;
+            config.document.writeValues = [&](const auto&, const Values& values) -> Status
+            {
+                ++writes;
+                REQUIRE(values.at("count") == Value{int64_t{3}});
+                REQUIRE(values.at("ratio") == Value{0.7});
+                return {};
+            };
+            SettingsEditor editor(platform, config);
+            REQUIRE(editor.GetCloseValidationPolicy() == FormValidationPolicy::ShowDecisionDialog);
+            REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+            REQUIRE(editor.Show());
+            auto& host = *editor.View()->Host();
+            WaitForConfiguration(host.Window()); host.Update();
+            auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+            auto* ratio = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<double>>(*editor.View()));
+            REQUIRE(host.Focus(count)); Draft(*count, "7"); Draft(*count, "99");
+            REQUIRE(host.Focus(ratio)); Draft(*ratio, "0.7");
+            REQUIRE_FALSE(editor.Hide()); REQUIRE(editor.IsVisible()); REQUIRE(writes == 0);
+            REQUIRE(count->Text() == "99"); REQUIRE(ratio->Text() == "0.7");
+            REQUIRE(editor.View()->ValidationMessage().find("Count") != std::string::npos);
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+            editor.SetCloseValidationPolicy(FormValidationPolicy::SaveValidFields);
+            REQUIRE(editor.Hide()); REQUIRE_FALSE(editor.IsVisible()); REQUIRE(writes == 1);
+            REQUIRE(count->Text() == "3"); REQUIRE(ratio->Text() == "0.7");
+            REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{3}});
+            REQUIRE(editor.Document().WorkingValue("ratio") == Value{0.7});
+            REQUIRE_FALSE(editor.Document().IsDirty());
+        }
+}
+TEST_CASE("Save-valid close keeps the form open after persistence failure and supports retry", "[viewer][validation][close]")
+{
+    TestPlatform platform;
+    auto config = SaveValidCloseConfig();
+    bool fail = true;
+    unsigned writes = 0;
+    config.document.writeValues = [&](const auto&, const Values& values) -> Status
+    {
+        ++writes;
+        REQUIRE(values.at("count") == Value{int64_t{3}});
+        REQUIRE(values.at("ratio") == Value{0.7});
+        if (fail) return std::unexpected(Error{"save", "Writer failed"});
+        return {};
+    };
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+    auto* ratio = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<double>>(*editor.View()));
+    REQUIRE(host.Focus(count)); Draft(*count, "99");
+    REQUIRE(host.Focus(ratio)); Draft(*ratio, "0.7");
+    REQUIRE_FALSE(editor.Hide()); REQUIRE(editor.IsVisible()); REQUIRE(writes == 1);
+    REQUIRE(count->Text() == "99"); REQUIRE(ratio->Text() == "0.7");
+    REQUIRE(host.HasPopup()); host.ClosePopup(Phase::Cancel);
+    fail = false;
+    REQUIRE(editor.Hide()); REQUIRE(writes == 2);
+}
+
+TEST_CASE("Save decisions preserve active drafts on cancellation and failed persistence", "[viewer][validation][decision][save]")
+{
+    TestPlatform platform;
+    for (const auto apply : {ApplyPolicy::Immediate, ApplyPolicy::OnApply})
+        for (const auto fieldPolicy : {LWSUI::InvalidEditPolicy::BlockOnLeave,
+                                      LWSUI::InvalidEditPolicy::DiscardOnLeave, LWSUI::InvalidEditPolicy::KeepInvalid})
+        {
+            auto config = SaveValidCloseConfig();
+            config.document.applyPolicy = apply;
+            config.invalidEditPolicy = fieldPolicy;
+            config.saveValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+            unsigned writes = 0;
+            bool fail = true;
+            config.document.writeValues = [&](const auto&, const Values& values) -> Status
+            {
+                ++writes;
+                REQUIRE(values.at("count") == Value{int64_t{3}});
+                REQUIRE(values.at("ratio") == Value{0.7});
+                if (fail) return std::unexpected(Error{"save", "Writer failed"});
+                return {};
+            };
+            SettingsEditor editor(platform, config);
+            REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+            REQUIRE(editor.Show());
+            auto& view = *editor.View();
+            auto& host = *view.Host();
+            WaitForConfiguration(host.Window()); host.Update();
+            auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(view));
+            auto* ratio = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<double>>(view));
+            REQUIRE(host.Focus(ratio)); Draft(*ratio, "0.7");
+            REQUIRE(host.Focus(count)); Draft(*count, "7"); Draft(*count, "99");
+            ClickButton(*FindButton(view, "Save")); host.Update();
+            auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+            REQUIRE(dialog); REQUIRE(writes == 0); REQUIRE(count->Text() == "99");
+            REQUIRE(FindButton(*dialog, "Save valid fields"));
+            REQUIRE_FALSE(FindButton(*dialog, "Discard all and close"));
+            FindButton(*dialog, "Keep editing")->OnClick.Raise(); host.Update();
+            REQUIRE(count->Text() == "99"); REQUIRE(ratio->Text() == "0.7"); REQUIRE(writes == 0);
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true})); host.Update();
+            dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+            REQUIRE(dialog);
+            FindButton(*dialog, "Save valid fields")->OnClick.Raise(); host.Update();
+            REQUIRE(writes == 1); REQUIRE(editor.IsVisible());
+            REQUIRE(count->Text() == "99"); REQUIRE(ratio->Text() == "0.7");
+            REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{7}});
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+            editor.SetSaveDialogOptions({false, false});
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true})); host.Update();
+            dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+            REQUIRE(dialog); REQUIRE_FALSE(FindButton(*dialog, "Save valid fields"));
+            REQUIRE(FindButton(*dialog, "Keep editing")); REQUIRE(writes == 1);
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+            editor.SetSaveDialogOptions({true, true});
+            fail = false;
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true})); host.Update();
+            dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+            FindButton(*dialog, "Save valid fields")->OnClick.Raise(); host.Update();
+            REQUIRE(writes == 2); REQUIRE(count->Text() == "3"); REQUIRE(ratio->Text() == "0.7");
+            REQUIRE_FALSE(editor.Document().IsDirty()); REQUIRE_FALSE(host.HasPopup());
+        }
+}
+
+TEST_CASE("Discard all restores saved valid and invalid fields without writing", "[viewer][validation][decision][close]")
+{
+    TestPlatform platform;
+    for (const auto apply : {ApplyPolicy::Immediate, ApplyPolicy::OnApply})
+    {
+        auto config = SaveValidCloseConfig();
+        config.document.applyPolicy = apply;
+        config.closeValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+        unsigned writes = 0;
+        config.document.writeValues = [&](const auto&, const Values&) -> Status { ++writes; return {}; };
+        SettingsEditor editor(platform, config);
+        REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+        REQUIRE(editor.Document().SetValue("count", int64_t{4}));
+        REQUIRE(editor.Document().Apply()); REQUIRE(editor.Document().Save());
+        REQUIRE(editor.Show());
+        auto& host = *editor.View()->Host();
+        auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+        REQUIRE(editor.Document().SetValue("name", std::string{"unsaved"}));
+        REQUIRE(host.Focus(count)); Draft(*count, "7"); Draft(*count, "99");
+        editor.SetCloseDialogOptions({false, false});
+        REQUIRE_FALSE(editor.Hide());
+        auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+        REQUIRE(dialog); REQUIRE(FindButton(*dialog, "Cancel close"));
+        REQUIRE_FALSE(FindButton(*dialog, "Save valid fields and close"));
+        REQUIRE_FALSE(FindButton(*dialog, "Discard all and close"));
+        REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+        REQUIRE(count->Text() == "99");
+        editor.SetCloseDialogOptions({true, true});
+        REQUIRE_FALSE(editor.Hide());
+        dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+        FindButton(*dialog, "Discard all and close")->OnClick.Raise(); host.Update();
+        REQUIRE_FALSE(editor.IsVisible()); REQUIRE(writes == 1);
+        REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{4}});
+        REQUIRE(editor.Document().AppliedValue("count") == Value{int64_t{4}});
+        REQUIRE(editor.Document().WorkingValue("name") == Value{std::string{"hello"}});
+        REQUIRE_FALSE(editor.Document().IsDirty()); REQUIRE(count->Text() == "4");
+    }
+}
+
+TEST_CASE("Valid close saves directly and apply decisions remain apply only", "[viewer][validation][decision]")
+{
+    TestPlatform platform;
+    auto config = SaveValidCloseConfig();
+    config.document.applyPolicy = ApplyPolicy::OnApply;
+    config.saveValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+    config.closeValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+    unsigned writes = 0;
+    config.document.writeValues = [&](const auto&, const Values&) -> Status { ++writes; return {}; };
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+    REQUIRE(editor.Document().SetValue("name", std::string{"pending"}));
+    REQUIRE(host.Focus(count)); Draft(*count, "99");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Enter, .control = true})); host.Update();
+    auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+    REQUIRE(dialog); REQUIRE(FindButton(*dialog, "Apply valid fields"));
+    FindButton(*dialog, "Apply valid fields")->OnClick.Raise(); host.Update();
+    REQUIRE(writes == 0); REQUIRE(editor.IsVisible()); REQUIRE(count->Text() == "3");
+    REQUIRE(editor.Document().AppliedValue("name") == Value{std::string{"pending"}});
+    REQUIRE(editor.Hide()); REQUIRE(writes == 1); REQUIRE_FALSE(editor.IsVisible());
+    REQUIRE_FALSE(editor.Document().IsDirty());
+}
+
+TEST_CASE("Save decisions include filtered fields and restore popup drafts after failure", "[viewer][validation][decision][popup]")
+{
+    TestPlatform platform;
+    auto config = SaveValidCloseConfig();
+    config.saveValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+    unsigned writes = 0;
+    bool fail = true;
+    config.document.writeValues = [&](const auto&, const Values& values) -> Status
+    {
+        ++writes;
+        REQUIRE(values.at("count") == Value{int64_t{3}});
+        REQUIRE(values.at("color") == Value{LLUtils::Color{uint32_t{0x123456ff}}});
+        if (fail) return std::unexpected(Error{"save", "Writer failed"});
+        return {};
+    };
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& view = *editor.View();
+    auto& host = *view.Host();
+    WaitForConfiguration(host.Window()); host.Update();
+    auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(view));
+    REQUIRE(host.Focus(count)); Draft(*count, "99");
+    editor.SetFilter("Color"); host.Update();
+    auto* picker = FindControl<LWSUI::ColorPicker>(view);
+    FindControl<LWSUI::ColorSwatch>(*picker)->OnClick.Raise(); host.Update();
+    auto* popup = LWSUI::internal::UIHostTestAccess::Popup(host);
+    REQUIRE(popup);
+    auto* field = FindControl<LWSUI::TextBox>(*popup);
+    REQUIRE(host.Focus(field)); Draft(*field, "#");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true})); host.Update();
+    auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+    REQUIRE(dialog != popup); REQUIRE(writes == 0);
+    REQUIRE(view.ValidationMessage().find("Count") != std::string::npos);
+    REQUIRE(view.ValidationMessage().find("Color") != std::string::npos);
+    FindButton(*dialog, "X")->OnClick.Raise(); host.Update();
+    REQUIRE(LWSUI::internal::UIHostTestAccess::Popup(host) == popup);
+    REQUIRE(field->Text() == "#"); REQUIRE(count->Text() == "99");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true})); host.Update();
+    dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+    FindButton(*dialog, "Save valid fields")->OnClick.Raise(); host.Update();
+    REQUIRE(writes == 1); REQUIRE(field->Text() == "#"); REQUIRE(count->Text() == "99");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+    REQUIRE(LWSUI::internal::UIHostTestAccess::Popup(host) == popup);
+    REQUIRE(host.IsFocused(*field)); REQUIRE(field->Text() == "#");
+    fail = false;
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true})); host.Update();
+    dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+    FindButton(*dialog, "Save valid fields")->OnClick.Raise(); host.Update();
+    REQUIRE(writes == 2); REQUIRE_FALSE(host.HasPopup()); REQUIRE_FALSE(editor.Document().IsDirty());
+    REQUIRE(count->Text() == "3");
+}
+
+TEST_CASE("Silent save batches invalid restoration before autosave", "[viewer][validation][decision][save]")
+{
+    TestPlatform platform;
+    for (const auto apply : {ApplyPolicy::Immediate, ApplyPolicy::OnApply})
+        for (const auto save : {SavePolicy::Manual, SavePolicy::OnCommit})
+        {
+            auto config = SaveValidCloseConfig();
+            config.document.applyPolicy = apply;
+            config.document.savePolicy = save;
+            config.saveValidationPolicy = FormValidationPolicy::SaveValidFields;
+            config.invalidEditPolicy = LWSUI::InvalidEditPolicy::BlockOnLeave;
+            unsigned writes = 0;
+            config.document.writeValues = [&](const auto&, const Values& values) -> Status
+            {
+                ++writes;
+                REQUIRE(values.at("count") == Value{int64_t{3}});
+                REQUIRE(values.at("ratio") == Value{0.7});
+                return {};
+            };
+            SettingsEditor editor(platform, config);
+            REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+            REQUIRE(editor.Show());
+            auto& host = *editor.View()->Host();
+            WaitForConfiguration(host.Window()); host.Update();
+            REQUIRE(editor.Document().SetValue("ratio", 0.7, EditPhase::Preview));
+            auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+            REQUIRE(host.Focus(count)); Draft(*count, "7"); Draft(*count, "99");
+            ClickButton(*FindButton(*editor.View(), save == SavePolicy::Manual ? "Save" : "Save now")); host.Update();
+            REQUIRE(writes == 1); REQUIRE(count->Text() == "3"); REQUIRE_FALSE(host.HasPopup());
+            REQUIRE_FALSE(editor.Document().IsDirty());
+            REQUIRE(editor.Document().AppliedValue("ratio") == Value{0.7});
+        }
+}
+
+TEST_CASE("Decision choices revalidate fields changed while the dialog is open", "[viewer][validation][decision]")
+{
+    TestPlatform platform;
+    EditorConfig config;
+    config.document.valuesFile = "unused.json";
+    unsigned writes = 0;
+    config.document.writeValues = [&](const auto&, const Values& values) -> Status
+    {
+        ++writes;
+        REQUIRE(values.at("count") == Value{int64_t{5}});
+        REQUIRE(values.at("ratio") == Value{1.5});
+        return {};
+    };
+    SettingsEditor editor(platform, config);
+    REQUIRE(editor.GetSaveValidationPolicy() == FormValidationPolicy::ShowDecisionDialog);
+    REQUIRE(editor.GetCloseValidationPolicy() == FormValidationPolicy::ShowDecisionDialog);
+    REQUIRE(config.saveDialogOptions.saveValidFields);
+    REQUIRE(config.closeDialogOptions.saveValidFields); REQUIRE(config.closeDialogOptions.discardAll);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto& view = *editor.View();
+    auto& host = *view.Host();
+    auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(view));
+    auto* ratio = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<double>>(view));
+    REQUIRE(host.Focus(count)); Draft(*count, "99");
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::S, .control = true})); host.Update();
+    auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+    REQUIRE(dialog); REQUIRE(writes == 0);
+    REQUIRE(editor.Document().SetValue("count", int64_t{5}));
+    Draft(*ratio, "0.7"); Draft(*ratio, "-");
+    FindButton(*dialog, "Save valid fields")->OnClick.Raise(); host.Update();
+    REQUIRE(writes == 1); REQUIRE(count->Text() == "5"); REQUIRE(ratio->Text() == "1.5");
+    REQUIRE_FALSE(editor.Document().IsDirty()); REQUIRE_FALSE(host.HasPopup());
+}
+TEST_CASE("Close dialog options independently control optional actions", "[viewer][validation][decision][close]")
+{
+    TestPlatform platform;
+    for (const bool save : {false, true})
+        for (const bool discard : {false, true})
+        {
+            auto config = SaveValidCloseConfig();
+            config.closeValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+            config.closeDialogOptions = {save, discard};
+            SettingsEditor editor(platform, config);
+            REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template())); REQUIRE(editor.Show());
+            auto& host = *editor.View()->Host();
+            auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+            REQUIRE(host.Focus(count)); Draft(*count, "99");
+            REQUIRE_FALSE(editor.Hide());
+            auto* dialog = LWSUI::internal::UIHostTestAccess::Popup(host);
+            REQUIRE(dialog);
+            REQUIRE(bool(FindButton(*dialog, "Save valid fields and close")) == save);
+            REQUIRE(bool(FindButton(*dialog, "Discard all and close")) == discard);
+            REQUIRE(FindButton(*dialog, "Cancel close"));
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+            REQUIRE(editor.IsVisible()); REQUIRE(count->Text() == "99");
+        }
+}
+
+TEST_CASE("Document Save records the snapshot passed to a reentrant writer", "[document][persistence][regression]")
+{
+    DocumentConfig config;
+    config.valuesFile = "unused.json";
+    Values written;
+    SettingsDocument* current = nullptr;
+    config.writeValues = [&](const auto&, const Values& values) -> Status
+    {
+        written = values;
+        REQUIRE(current->SetValue("count", int64_t{5}));
+        return {};
+    };
+    SettingsDocument document(config); current = &document;
+    REQUIRE(SettingsStorage::LoadTemplate(document, Template()));
+    REQUIRE(document.SetValue("count", int64_t{4}));
+    REQUIRE(document.Save());
+    REQUIRE(written.at("count") == Value{int64_t{4}});
+    REQUIRE(document.WorkingValue("count") == Value{int64_t{5}});
+    REQUIRE(document.IsDirty());
+    document.RevertSaved();
+    REQUIRE(document.WorkingValue("count") == Value{int64_t{4}});
+}
+TEST_CASE("Save completion includes dependent cancellation and rolls back failed writes", "[viewer][validation][save][regression]")
+{
+    TestPlatform platform;
+    auto config = SaveValidCloseConfig();
+    config.saveValidationPolicy = FormValidationPolicy::SaveValidFields;
+    config.document.applyPolicy = ApplyPolicy::OnApply;
+    bool fail = true;
+    unsigned writes = 0;
+    config.document.writeValues = [&](const auto&, const Values& values) -> Status
+    {
+        ++writes;
+        REQUIRE(values.at("count") == Value{int64_t{3}});
+        REQUIRE(values.at("enabled") == Value{false});
+        if (fail) return std::unexpected(Error{"save", "Writer failed"});
+        return {};
+    };
+    SettingsEditor editor(platform, config);
+    auto& document = editor.Document();
+    REQUIRE(SettingsStorage::LoadTemplate(document, Template())); REQUIRE(editor.Show());
+    auto& host = *editor.View()->Host();
+    WaitForConfiguration(host.Window()); host.Update();
+    auto preview = document.OnChange.Connect([&](const Change& change)
+    {
+        if (change.id == "count" && change.phase == EditPhase::Preview)
+            REQUIRE(document.SetValue("enabled", true, EditPhase::Preview, ChangeOrigin::Load));
+    });
+    auto finished = document.OnEditFinished.Connect([&](const std::string& id, EditPhase phase, ChangeOrigin)
+    {
+        if (id == "count" && phase == EditPhase::Cancel)
+            REQUIRE(document.SetValue("enabled", false, EditPhase::Cancel, ChangeOrigin::Load));
+    });
+    auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+    REQUIRE(host.Focus(count)); Draft(*count, "7"); Draft(*count, "99");
+    ClickButton(*FindButton(*editor.View(), "Save")); host.Update();
+    REQUIRE(writes == 1); REQUIRE(count->Text() == "99");
+    REQUIRE(document.WorkingValue("count") == Value{int64_t{7}});
+    REQUIRE(document.WorkingValue("enabled") == Value{true});
+    REQUIRE(document.IsEditing("count")); REQUIRE(document.IsEditing("enabled"));
+    REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+    fail = false;
+    ClickButton(*FindButton(*editor.View(), "Save")); host.Update();
+    REQUIRE(writes == 2); REQUIRE(count->Text() == "3");
+    REQUIRE(document.WorkingValue("enabled") == Value{false});
+    REQUIRE_FALSE(document.IsDirty());
+}
+
+TEST_CASE("Theme save-valid preserves inheritance and retries failed writes with drafts intact", "[viewer][theme][validation][regression]")
+{
+    TestPlatform platform;
+    for (const bool failFirst : {false, true})
+    {
+        TempFile file;
+        ThemeSession session(file.path);
+        ThemeEditor theme(platform, session);
+        REQUIRE(theme.Load()); REQUIRE(theme.Show());
+        auto& editor = internal::ThemeEditorTestAccess::Editor(theme);
+        editor.SetSaveValidationPolicy(FormValidationPolicy::SaveValidFields);
+        const std::string path = "sections/description/colors/background";
+        editor.SetFilter(path);
+        auto& host = *editor.View()->Host();
+        WaitForConfiguration(host.Window()); host.Update();
+        LWSUI::ColorPicker* picker = nullptr;
+        for (auto* candidate : Controls<LWSUI::ColorPicker>(*editor.View()))
+        {
+            bool visible = true;
+            for (auto* parent = static_cast<LWSUI::Control*>(candidate); parent; parent = parent->Parent())
+                visible &= parent->Visible();
+            if (visible) { picker = candidate; break; }
+        }
+        REQUIRE(picker);
+        auto* text = FindControl<LWSUI::TextBox>(*picker);
+        REQUIRE(host.Focus(text)); Draft(*text, "#334455ff"); Draft(*text, "#");
+        REQUIRE(session.Current().overrides.contains(path));
+        if (failFirst)
+        {
+            REQUIRE(std::filesystem::create_directory(file.path));
+            FindButton(*editor.View(), "Save")->OnClick.Raise(); host.Update();
+            REQUIRE(text->Text() == "#"); REQUIRE(session.Current().overrides.contains(path));
+            REQUIRE(editor.Document().IsEditing(path));
+            REQUIRE(host.Route({.kind = Kind::KeyDown, .key = Key::Escape})); host.Update();
+            REQUIRE(std::filesystem::remove(file.path));
+        }
+        FindButton(*editor.View(), "Save")->OnClick.Raise(); host.Update();
+        REQUIRE_FALSE(host.HasPopup()); REQUIRE_FALSE(editor.Document().IsDirty());
+        REQUIRE_FALSE(session.Current().overrides.contains(path));
+        REQUIRE_FALSE(session.Saved().overrides.contains(path));
+        auto profile = ThemeStorage::LoadProfileFile(file.path);
+        REQUIRE(profile); REQUIRE_FALSE(profile->overrides.contains(path));
+    }
+}
+
+TEST_CASE("Auxiliary completion can reject Save before any values are written", "[viewer][validation][regression]")
+{
+    TestPlatform platform;
+    auto config = SaveValidCloseConfig();
+    config.saveValidationPolicy = FormValidationPolicy::SaveValidFields;
+    unsigned writes = 0;
+    config.document.writeValues = [&](const auto&, const Values&) -> Status { ++writes; return {}; };
+    SettingsEditor editor(platform, config);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template())); REQUIRE(editor.Show());
+    struct Gate : LWSUI::Control
+    {
+        bool Finish(LWSUI::EditPhase phase) override { return phase != LWSUI::EditPhase::Commit; }
+    };
+    editor.View()->HeaderActions().Emplace<Gate>();
+    auto* count = FindControl<LWSUI::TextBox>(*FindControl<LWSUI::NumericEdit<int64_t>>(*editor.View()));
+    auto& host = *editor.View()->Host();
+    REQUIRE(host.Focus(count)); Draft(*count, "7"); Draft(*count, "99");
+    FindButton(*editor.View(), "Save")->OnClick.Raise(); host.Update();
+    REQUIRE(writes == 0); REQUIRE(count->Text() == "99");
+    REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{7}});
+}

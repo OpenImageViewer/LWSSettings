@@ -54,6 +54,9 @@ namespace LWSSettings
             {
                 if (synchronizing_) return;
                 automaticOverrides_.clear();
+                for (const auto& field : ThemeFields::All())
+                    if (editor_.Document().IsEditing(field.path) && editor_.Document().IsEditing(OverrideId(field.path)))
+                        automaticOverrides_.insert(field.path);
                 Synchronize();
             });
     }

@@ -170,6 +170,12 @@ namespace LWSSettings
         void Cancel();
         void RevertSaved();
         Status Save();
+        enum class Completion { Apply, Save, Discard };
+        // Completes typed edits and derived callbacks as one operation. Failed Save restores
+        // values and edit starts, then notifies adapters through OnValuesReload.
+        // Optional adapter completion runs inside the operation, before persistence.
+        Status CompleteEdits(Completion completion, const std::vector<std::string>& discarded = {},
+                             const std::function<Status()>& prepare = {});
         bool IsEditing(std::string_view id) const { return editStarts_.contains(id); }
         bool IsDirty() const { return working_ != saved_; }
         bool HasPendingChanges() const { return working_ != applied_; }
@@ -202,6 +208,8 @@ namespace LWSSettings
         void Notify();
         void AutoSave();
         Status Persist();
+        Status PersistValues(Values snapshot);
+        bool autoSaveSuspended_ = false, completingEdits_ = false;
         DocumentConfig config_;
         std::vector<Definition> definitions_;
         std::map<std::string, const SettingDefinition*, std::less<>> index_;

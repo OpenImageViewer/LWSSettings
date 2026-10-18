@@ -11,6 +11,10 @@ namespace LWSSettings
         SettingsTheme theme;
         bool showRevert = false, revertOnClose = false, collapseGroups = false;
         std::filesystem::path iconPath; // PNG; empty selects the embedded cog wheels.
+        LWSUI::InvalidEditPolicy invalidEditPolicy = LWSUI::InvalidEditPolicy::KeepInvalid;
+        FormValidationPolicy saveValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+        FormValidationPolicy closeValidationPolicy = FormValidationPolicy::ShowDecisionDialog;
+        ValidationDialogOptions saveDialogOptions, closeDialogOptions;
         bool redrawOnResize = true;     // Callers can opt out on expensive views or slower machines.
     };
     // Owns one document, window and view; the caller context must outlive the editor.
@@ -25,9 +29,27 @@ namespace LWSSettings
         SettingsDocument& Document() { return document_; }
         const SettingsDocument& Document() const { return document_; }
         Status Show();
+        // Returns false while a decision is pending or closing fails.
+        // OnHidden also covers a successful asynchronous dialog decision.
         bool Hide();
         bool IsVisible() const;
         void SetRedrawOnResize(bool enabled);
+        void SetInvalidEditPolicy(LWSUI::InvalidEditPolicy policy);
+        LWSUI::InvalidEditPolicy GetInvalidEditPolicy() const { return config_.invalidEditPolicy; }
+        void SetCloseValidationPolicy(FormValidationPolicy policy) { config_.closeValidationPolicy = policy; }
+        FormValidationPolicy GetCloseValidationPolicy() const { return config_.closeValidationPolicy; }
+        void SetSaveValidationPolicy(FormValidationPolicy policy)
+        {
+            config_.saveValidationPolicy = policy;
+            if (view_) view_->SetSaveValidationPolicy(policy);
+        }
+        FormValidationPolicy GetSaveValidationPolicy() const { return config_.saveValidationPolicy; }
+        void SetSaveDialogOptions(ValidationDialogOptions options)
+        {
+            config_.saveDialogOptions = options;
+            if (view_) view_->SetSaveDialogOptions(options);
+        }
+        void SetCloseDialogOptions(ValidationDialogOptions options) { config_.closeDialogOptions = options; }
         bool RedrawOnResize() const { return config_.redrawOnResize; }
         SettingsView* View() const { return view_; }
         void SetFilter(std::string text);
@@ -42,6 +64,7 @@ namespace LWSSettings
 
       private:
 
+        bool HideWindow();
         LWS::PlatformContext& platform_;
         EditorConfig config_;
         SettingsDocument document_;
