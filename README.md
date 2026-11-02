@@ -21,9 +21,18 @@ Each preset rebuilds in `build/<preset-name>`; do not copy executables into alte
 `dependencies/LWS`. The presets use the adjacent LWS checkout and its existing JSON
 and Catch2 source caches; override these cache paths when using another checkout.
 
-Alternatively provide existing `LWSUI::LWSUI`, `LWSLib`, and
-`nlohmann_json::nlohmann_json` targets. Windows uses DirectWrite/Direct2D/WIC;
-Wayland uses Pango/Cairo and LWS bitmap presentation. LWS handles native file
+LWSSettings first reuses existing `LWSLib` and `LWSUI::LWSUI` targets. Otherwise
+it adds `LWSSETTINGS_LWS_SOURCE_DIR` when that directory contains a CMake project,
+then searches for an LWS package, then fetches LWS from
+[upstream](https://github.com/OpenImageViewer/LWS) at revision
+`6e5b34af41cb7cac840fe496f557f17c484bef8d` with its LLUtils submodule. A package
+must provide both LWS targets. FetchContent source overrides are supported.
+
+For JSON, an existing `nlohmann_json::nlohmann_json` target takes precedence,
+followed by `LWSSETTINGS_JSON_INCLUDE_DIR`, `LWSSETTINGS_JSON_SOURCE_DIR` when
+it contains a CMake project, and `find_package(nlohmann_json 3.12 REQUIRED)`.
+Windows uses DirectWrite/Direct2D/WIC, and Wayland uses Pango/Cairo and LWS bitmap
+presentation. LWS handles native file
 dialogs, clipboard, timers and DPI notifications.
 
 Run `LWSSettingsDemo` from its output directory. `--staged` selects OnApply;
