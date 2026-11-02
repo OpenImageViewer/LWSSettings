@@ -29,6 +29,8 @@ namespace LWSSettings
         SettingsDocument& Document() { return document_; }
         const SettingsDocument& Document() const { return document_; }
         Status Show();
+        // Requests activation after Show. A compositor may decline the request.
+        LWS::Result RequestActivation();
         // Returns false while a decision is pending or closing fails.
         // OnHidden also covers a successful asynchronous dialog decision.
         bool Hide();
@@ -58,6 +60,8 @@ namespace LWSSettings
         // Validated immediately, applied on the next host update. Repeated calls coalesce.
         Status SetTheme(const SettingsTheme& theme);
         LWSUI::Event<void(LWS::KeyCode)> OnKeyDown;
+        // Raised after menus, popups and controls leave a key unhandled.
+        LWSUI::Event<void(const LWSUI::Input&, bool&)> OnUnhandledKeyDown;
         // Raised after a visible editor is successfully hidden. The application
         // decides whether hiding this editor should end its message loop.
         LWSUI::Event<void()> OnHidden;
@@ -76,6 +80,7 @@ namespace LWSSettings
         bool themePending_ = false, minimumPending_ = false;
         int32_t minimumWidth_ = 480;
         LWS::EventConnection listener_;
+        LWSUI::Event<void(const LWSUI::Input&, bool&)>::Connection unhandledKeyConnection_;
         LWSUI::Event<void(const std::string&)>::Connection errorConnection_;
         LWSUI::Event<void(float)>::Connection minimumConnection_;
     };

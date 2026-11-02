@@ -1077,7 +1077,7 @@ namespace LWSSettings
         using Key = LWS::KeyCode;
         if (input.kind != LWSUI::InputKind::KeyDown)
             return false;
-        if (input.key == Key::Escape && Host() && Host()->IsFocused(*search_))
+        if (input.key == Key::Escape && Host() && Host()->IsFocused(*search_) && !search_->Text().empty())
         {
             ClearSearch();
             return true;

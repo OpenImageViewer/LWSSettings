@@ -25,7 +25,7 @@ LWSSettings first reuses existing `LWSLib` and `LWSUI::LWSUI` targets. Otherwise
 it adds `LWSSETTINGS_LWS_SOURCE_DIR` when that directory contains a CMake project,
 then searches for an LWS package, then fetches LWS from
 [upstream](https://github.com/OpenImageViewer/LWS) at revision
-`6e5b34af41cb7cac840fe496f557f17c484bef8d` with its LLUtils submodule. A package
+`778017130e9608e1735eefaa25baa49b2e4c0db9` with its LLUtils submodule. A package
 must provide both LWS targets. FetchContent source overrides are supported.
 
 For JSON, an existing `nlohmann_json::nlohmann_json` target takes precedence,
@@ -159,6 +159,10 @@ auto errors = document.OnError.Connect([](const LWSSettings::Error& error) {
 auto shown = editor.Show();
 if (!shown) /* report shown.error() */;
 ```
+
+Use `OnUnhandledKeyDown` for application shortcuts after controls and overlays handle
+input. Call `RequestActivation()` after `Show()` to request focus and restore a minimized
+window. Activation is subject to platform support and window-manager policy.
 
 Keep subscriptions in the scope where notifications are wanted. Data operations
 work without initializing a backend or displaying a window. `Show` requires a usable

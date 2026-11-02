@@ -32,6 +32,7 @@ namespace LWSSettings
             {
                 errorConnection_ = {};
                 minimumConnection_ = {};
+                unhandledKeyConnection_ = {};
                 minimumPending_ = false;
                 if (view_) { initialValueFilter_ = view_->GetValueFilter(); filter_ = view_->GetFilter(); }
                 host_.reset();
@@ -73,6 +74,8 @@ namespace LWSSettings
                 if (!listener) throw std::runtime_error("Cannot register editor listener");
                 listener_ = std::move(*listener);
                 host_ = std::make_unique<LWSUI::UIHost>(*window_, config_.theme.base);
+                unhandledKeyConnection_ = host_->OnUnhandledKeyDown.Connect(
+                    [this](const LWSUI::Input& input, bool& handled) { OnUnhandledKeyDown.Raise(input, handled); });
                 host_->SetRedrawOnResize(config_.redrawOnResize);
                 host_->SetInvalidEditPolicy(config_.invalidEditPolicy);
                 host_->SetPopupStyle(config_.theme.popups);
@@ -130,6 +133,16 @@ namespace LWSSettings
         {
             return std::unexpected(Error{"window", e.what()});
         }
+    }
+    LWS::Result SettingsEditor::RequestActivation()
+    {
+        if (!window_ || !window_->IsCreated()) return LWS::Result::InvalidState;
+        if (window_->GetShowState() == LWS::WindowShowState::Minimized)
+        {
+            const auto restored = window_->RequestShowState(LWS::WindowShowState::Restored);
+            if (restored != LWS::Result::Success) return restored;
+        }
+        return window_->RequestActivation();
     }
     bool SettingsEditor::Hide()
     {

@@ -5111,3 +5111,40 @@ TEST_CASE("Auxiliary completion can reject Save before any values are written", 
     REQUIRE(writes == 0); REQUIRE(count->Text() == "99");
     REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{7}});
 }
+
+TEST_CASE("Editor forwards keys left unhandled by search and fields", "[viewer][keyboard]")
+{
+    using namespace LWSUI;
+    TestPlatform platform;
+    SettingsEditor editor(platform);
+    REQUIRE(SettingsStorage::LoadTemplate(editor.Document(), Template()));
+    REQUIRE(editor.Show());
+    auto* host = editor.View()->Host();
+    WaitForConfiguration(host->Window());
+    host->Update();
+    auto* search = Controls<TextBox>(*editor.View())[0];
+    REQUIRE(host->Focus(search));
+    const Input escape{.kind = InputKind::KeyDown, .key = LWS::KeyCode::Escape};
+    REQUIRE_FALSE(host->Route(escape));
+    unsigned calls = 0;
+    auto keys = editor.OnUnhandledKeyDown.Connect([&](const Input& input, bool& handled)
+    {
+        REQUIRE(input.key == LWS::KeyCode::Escape);
+        ++calls;
+        handled = true;
+    });
+    Draft(*search, "count");
+    REQUIRE(host->Route(escape));
+    REQUIRE(search->Text().empty());
+    REQUIRE(calls == 0);
+    REQUIRE(host->Route(escape));
+    REQUIRE(calls == 1);
+    auto* field = FindControl<TextBox>(*FindControl<NumericEdit<int64_t>>(*editor.View()));
+    REQUIRE(host->Focus(field));
+    Draft(*field, "8");
+    REQUIRE(host->Route(escape));
+    REQUIRE(editor.Document().WorkingValue("count") == Value{int64_t{3}});
+    REQUIRE(calls == 1);
+    REQUIRE(host->Route(escape));
+    REQUIRE(calls == 2);
+}
