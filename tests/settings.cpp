@@ -5148,3 +5148,16 @@ TEST_CASE("Editor forwards keys left unhandled by search and fields", "[viewer][
     REQUIRE(host->Route(escape));
     REQUIRE(calls == 2);
 }
+
+TEST_CASE("Corner radii inherit and allow square controls", "[theme][corners]")
+{
+    using namespace LWSSettings;
+    const auto theme = ThemeStorage::Decode(nlohmann::json::parse(
+        R"({"version":1,"base":{"metrics":{"cornerRadius":0}},"sections":{"tree":{"metrics":{"cornerRadius":9}}}})"));
+    REQUIRE(theme);
+    CHECK(theme->base.cornerRadius == 0);
+    CHECK(theme->controls.cornerRadius == 0);
+    CHECK(theme->tree.cornerRadius == 9);
+    CHECK_FALSE(ThemeStorage::Decode(nlohmann::json::parse(
+        R"({"version":1,"base":{"metrics":{"cornerRadius":-1}}})")));
+}

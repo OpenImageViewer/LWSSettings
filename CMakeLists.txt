@@ -25,7 +25,7 @@ else()
             set(LWS_BUILD_TESTS OFF CACHE BOOL "")
             FetchContent_Declare(LWS
                 GIT_REPOSITORY https://github.com/OpenImageViewer/LWS.git
-                GIT_TAG 778017130e9608e1735eefaa25baa49b2e4c0db9
+                GIT_TAG a559f66a0f2e2ddca4189aa90ca98789820e4a26
                 GIT_SUBMODULES external/LLUtils)
             FetchContent_MakeAvailable(LWS)
         endif()

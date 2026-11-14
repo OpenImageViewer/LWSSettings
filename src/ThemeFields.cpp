@@ -39,6 +39,7 @@ namespace LWSSettings
             {"textPadding", &LWSUI::Theme::textPadding},
             {"borderWidth", &LWSUI::Theme::borderWidth},
             {"focusWidth", &LWSUI::Theme::focusWidth},
+            {"cornerRadius", &LWSUI::Theme::cornerRadius},
             {"checkboxSize", &LWSUI::Theme::checkboxSize},
             {"choiceGap", &LWSUI::Theme::choiceGap},
             {"radioHeight", &LWSUI::Theme::radioHeight},
@@ -130,9 +131,11 @@ namespace LWSSettings
             d.description = "Theme property: " + field.path +
                             ". Editing creates an override; Use inherited restores the base or default value.";
             if (field.path.ends_with("/resetRightMargin"))
-                d.description = "Space to the right of Reset in logical pixels. Increasing it moves the whole button left without resizing it. Column padding is separate.";
+                d.description = "Space to the right of Reset in logical pixels. Increasing it moves the whole button "
+                                "left without resizing it. Column padding is separate.";
             else if (field.path.ends_with("/resetWidth"))
-                d.description = "Reset button width in logical pixels, expanded when needed to fit its caption. Does not include the right margin or column padding.";
+                d.description = "Reset button width in logical pixels, expanded when needed to fit its caption. Does "
+                                "not include the right margin or column padding.";
             const auto value = field.read(SettingsTheme{});
             std::visit(
                 [&](const auto& v)
@@ -167,12 +170,16 @@ namespace LWSSettings
                 {
                     std::string_view n = name;
                     bool zero = n == "spacing" || n.find("Padding") != n.npos || n == "padding" ||
-                                n.find("Gap") != n.npos || n.find("Inset") != n.npos || n == "scrollbarMargin" || n == "resetRightMargin";
+                                n.find("Gap") != n.npos || n.find("Inset") != n.npos || n == "scrollbarMargin" ||
+                                n == "resetRightMargin" || n == "cornerRadius";
                     Add(
                         fields, prefix + "/metrics/" + name,
                         [=](const SettingsTheme& t) -> Value { return double((t.*scope).*member); },
                         [=](SettingsTheme& t, const Value& v) { (t.*scope).*member = float(std::get<double>(v)); },
-                        n == "checkerSize" ? 1 : zero ? 0 : positive, n == "editorFraction" ? double(std::nextafter(1.f, 0.f)) : 10000,
+                        n == "checkerSize" ? 1
+                        : zero             ? 0
+                                           : positive,
+                        n == "editorFraction" ? double(std::nextafter(1.f, 0.f)) : 10000,
                         n == "editorFraction" ? .01 : 1);
                 }
                 for (auto [name, member] : fonts)
@@ -239,7 +246,8 @@ namespace LWSSettings
     }
     std::expected<SettingsTheme, Error> ThemeFields::Resolve(const ThemeOverrides& overrides, LWSUI::ThemePreset preset)
     {
-        if (preset != LWSUI::ThemePreset::Dark && preset != LWSUI::ThemePreset::Light && preset != LWSUI::ThemePreset::Warm)
+        if (preset != LWSUI::ThemePreset::Dark && preset != LWSUI::ThemePreset::Light &&
+            preset != LWSUI::ThemePreset::Warm)
             return std::unexpected(Error{"preset", "Unknown theme preset"});
         SettingsTheme theme(preset);
         // Base overrides precede section overrides. The candidate stays local until
@@ -247,11 +255,14 @@ namespace LWSSettings
         for (bool base : {true, false})
             for (const auto& [path, value] : overrides)
             {
-                if (path.starts_with("base/") != base) continue;
+                if (path.starts_with("base/") != base)
+                    continue;
                 const auto* field = Find(path);
-                if (!field) return std::unexpected(Error{path, "Unknown theme field"});
+                if (!field)
+                    return std::unexpected(Error{path, "Unknown theme field"});
                 auto valid = LWSSettings::Validate(field->definition, value);
-                if (!valid) return std::unexpected(valid.error());
+                if (!valid)
+                    return std::unexpected(valid.error());
                 field->assign(theme, *valid);
                 if (base)
                     for (auto [name, scope] : sections)

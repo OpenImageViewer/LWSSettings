@@ -25,7 +25,7 @@ LWSSettings first reuses existing `LWSLib` and `LWSUI::LWSUI` targets. Otherwise
 it adds `LWSSETTINGS_LWS_SOURCE_DIR` when that directory contains a CMake project,
 then searches for an LWS package, then fetches LWS from
 [upstream](https://github.com/OpenImageViewer/LWS) at revision
-`778017130e9608e1735eefaa25baa49b2e4c0db9` with its LLUtils submodule. A package
+`a559f66a0f2e2ddca4189aa90ca98789820e4a26` with its LLUtils submodule. A package
 must provide both LWS targets. FetchContent source overrides are supported.
 
 For JSON, an existing `nlohmann_json::nlohmann_json` target takes precedence,
