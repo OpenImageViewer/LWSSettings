@@ -131,7 +131,6 @@ namespace LWSSettings
         LWSUI::FlowPanel* searchFlow_ = nullptr;
         LWSUI::Label* descriptionTitle_;
         LWSUI::TextBox* search_;
-        LWSUI::Button* clearSearch_;
         LWSUI::ScrollView* treeScroll_;
         LWSUI::TreeView* tree_;
         LWSUI::ScrollView* descriptionScroll_;

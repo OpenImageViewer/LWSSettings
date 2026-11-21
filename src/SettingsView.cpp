@@ -191,11 +191,7 @@ namespace LWSSettings
         StyleFilterButtons();
         search_->SetHighlightPattern("");
         search_->SetPlaceholder("Search settings...");
-        clearSearch_ = &Emplace<LWSUI::Button>("×");
-        clearSearch_->SetStyle(theme_.search);
-        clearSearch_->SetHighlightPattern("");
-        clearSearch_->SetVisible(false);
-        clicks_.push_back(clearSearch_->OnClick.Connect([this] { ClearSearch(); }));
+        search_->SetClearButtonEnabled(true);
         const std::array names{"All", "Changed", "Default"};
         for (size_t i = 0; i < names.size(); ++i)
         {
@@ -277,10 +273,6 @@ namespace LWSSettings
         layout_ = &Emplace<LWSUI::DockPanel>();
         const auto take = [&](LWSUI::Control* control) { return Remove(*control); };
         layout_->AddDocked(take(ownedHeader_), LWSUI::Dock::Top);
-        auto entry = std::make_unique<LWSUI::DockPanel>();
-        clearSearch_->sizeToContent = true;
-        entry->AddDocked(take(clearSearch_), LWSUI::Dock::Right);
-        entry->AddDocked(take(search_), LWSUI::Dock::Fill);
         auto controls = std::make_unique<LWSUI::StackPanel>();
         controls->orientation = LWSUI::Orientation::Horizontal;
         controls->sizeToContent = true;
@@ -294,7 +286,7 @@ namespace LWSSettings
             controls->Add(take(button));
         auto flow = std::make_unique<LWSUI::FlowPanel>();
         searchFlow_ = flow.get();
-        flow->AddItem(std::move(entry), true, 180);
+        flow->AddItem(take(search_), true, 180);
         flow->AddItem(std::move(filters));
         flow->AddItem(std::move(controls));
         auto searchPanel = std::make_unique<LWSUI::Panel>(std::move(flow));
@@ -392,7 +384,6 @@ namespace LWSSettings
         headerState_->theme = theme_;
         headerState_->changed.Raise();
         search_->SetStyle(theme_.search);
-        clearSearch_->SetStyle(theme_.search);
         for (auto* button : groupButtons_) button->SetStyle(theme_.search);
         StyleFilterButtons();
         treeScroll_->SetStyle(theme_.tree);
@@ -798,9 +789,6 @@ namespace LWSSettings
             search_->SetText(text);
         if (Host())
             Host()->ClosePopup(LWSUI::EditPhase::Cancel);
-        if (text.empty() && Host() && Host()->IsFocused(*clearSearch_))
-            Host()->Focus(search_);
-        clearSearch_->SetVisible(!text.empty());
         auto next = Lower(std::move(text));
         if (next == filter_)
             return;

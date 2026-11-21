@@ -1463,12 +1463,12 @@ TEST_CASE("Viewer renders all controls and survives close and reopen", "[viewer]
                 const auto selector = filterButtons[0]->Bounds();
                 REQUIRE(textBounds.width > 0);
                 REQUIRE(clearSearch->Visible() == !query.empty());
-                const float searchRight = clearSearch->Visible() ? clearBounds.x + clearBounds.width
-                                                                 : textBounds.x + textBounds.width;
+                const float searchRight = textBounds.x + textBounds.width;
                 if (clearSearch->Visible())
                 {
                     REQUIRE(clearBounds.width > 0);
-                    REQUIRE(textBounds.x + textBounds.width == Catch::Approx(clearBounds.x));
+                    REQUIRE(clearBounds.x + clearBounds.width == Catch::Approx(searchRight));
+                    REQUIRE(clearBounds.x > textBounds.x);
                     REQUIRE(clearBounds.y == textBounds.y);
                     REQUIRE(clearBounds.height == textBounds.height);
                 }
