@@ -8,7 +8,7 @@ namespace LWSSettings
     {
         float horizontalPadding = 160.f / 7, sectionGap = 64.f / 7;
         float headerHeight = 480.f / 7, searchHeight = 256.f / 7;
-        float descriptionHeight = 1168.f / 7, footerHeight = 352.f / 7;
+        float descriptionHeight = 104.f, footerHeight = 352.f / 7;
         float statusHeight = 224.f / 7, actionWidth = 640.f / 7, actionGap = 40.f / 7;
         float descriptionTitleGap = 32.f / 7;
         float descriptionMaxFraction = .75f;
@@ -24,6 +24,7 @@ namespace LWSSettings
             base = LWSUI::MakeTheme(preset);
             base.borderWidth = 1.0f;
             base.checkerSize = 8.0f;
+            base.checkboxSize = 16.0f;
             base.editorFraction = .33f;
             base.editorMinLeft = 210.57142639160156f;
             base.focusWidth = 1.0f;
