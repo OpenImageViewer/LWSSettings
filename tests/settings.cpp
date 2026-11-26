@@ -2667,13 +2667,16 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
         SettingsView iconView(doc);
         iconView.SetIcon(*customIcon);
         Layout(iconView, 640, 480);
+        // Begin retains pixels; initialize the background just as UIHost does.
         canvas.Begin(640,480);
+        canvas.Fill(0, 0, 640, 480, iconView.Style().background);
         iconView.Render(canvas);
         auto before=canvas.End();
         std::vector<std::byte> copy(before.pixels.begin(), before.pixels.end());
         iconView.SetTheme(SettingsTheme{});
         Layout(iconView, 640,480);
         canvas.Begin(640,480);
+        canvas.Fill(0, 0, 640, 480, iconView.Style().background);
         iconView.Render(canvas);
         auto after=canvas.End();
         REQUIRE(std::equal(copy.begin(), copy.end(), after.pixels.begin(), after.pixels.end()));
@@ -2802,7 +2805,8 @@ TEST_CASE("Showcase previews transparent colors and highlights combo hover", "[v
         canvas.Fill(0, 0, 150, 40, LLUtils::Color{uint32_t{0x0000ffff}});
         selectable.Render(canvas);
         const auto frame = canvas.End();
-        const auto* corner = frame.pixels.data() + frame.rowPitch + 4;
+        // Check the fill inside the border, away from antialiased rounded corners and text.
+        const auto* corner = frame.pixels.data() + 2 * frame.rowPitch + (frame.width / 2) * 4;
         REQUIRE(corner[0] == std::byte(borderless ? 255 : 0));
         REQUIRE(corner[2] == std::byte(borderless ? 0 : 255));
     }
