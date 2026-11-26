@@ -52,6 +52,11 @@ namespace LWSSettings
                 for (const auto& child : group->children)
                     j["children"].push_back(DefinitionJson(child));
             }
+            else if (const auto* custom = std::get_if<CustomDefinition>(&node.content))
+            {
+                j["type"] = "custom";
+                j["control"] = custom->control;
+            }
             else
             {
                 auto& setting = std::get<SettingDefinition>(node.content);

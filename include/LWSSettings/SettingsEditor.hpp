@@ -6,6 +6,7 @@ namespace LWSSettings
     struct EditorConfig
     {
         DocumentConfig document;
+        CustomFactory customFactory;
         std::string title = "Settings";
         LWS::LogicalSize size{820, 680};
         SettingsTheme theme;

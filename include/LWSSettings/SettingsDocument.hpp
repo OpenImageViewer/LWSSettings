@@ -74,6 +74,11 @@ namespace LWSSettings
         bool visibleInEditor = true;
         Value DefaultValue() const;
     };
+    // Runtime content has no document value, default, or persistence entry.
+    struct CustomDefinition : Metadata
+    {
+        std::string control;
+    };
     struct Definition;
     struct GroupDefinition : Metadata
     {
@@ -81,7 +86,7 @@ namespace LWSSettings
     };
     struct Definition
     {
-        std::variant<GroupDefinition, SettingDefinition> content;
+        std::variant<GroupDefinition, SettingDefinition, CustomDefinition> content;
         const Metadata& Info() const;
     };
     enum class ApplyPolicy

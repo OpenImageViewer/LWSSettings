@@ -138,6 +138,11 @@ namespace LWSSettings
                     if (!result)
                         return result;
                 }
+                else if (const auto* custom = std::get_if<CustomDefinition>(&item.content))
+                {
+                    if (custom->control.empty() || !Utf8(custom->control))
+                        return std::unexpected(Error{custom->id, "Invalid custom control identifier"});
+                }
                 else
                 {
                     auto& setting = std::get<SettingDefinition>(item.content);
@@ -335,11 +340,8 @@ namespace LWSSettings
             for (const auto& d : list)
                 if (auto* group = std::get_if<GroupDefinition>(&d.content))
                     self(self, group->children);
-                else
-                {
-                    const auto& setting = std::get<SettingDefinition>(d.content);
-                    defaults.emplace(setting.id, setting.DefaultValue());
-                }
+                else if (const auto* setting = std::get_if<SettingDefinition>(&d.content))
+                    defaults.emplace(setting->id, setting->DefaultValue());
         };
         collect(collect, found->children);
         return ResetValues(std::move(defaults));

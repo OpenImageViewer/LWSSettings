@@ -25,7 +25,7 @@ LWSSettings first reuses existing `LWSLib` and `LWSUI::LWSUI` targets. Otherwise
 it adds `LWSSETTINGS_LWS_SOURCE_DIR` when that directory contains a CMake project,
 then searches for an LWS package, then fetches LWS from
 [upstream](https://github.com/OpenImageViewer/LWS) at revision
-`a559f66a0f2e2ddca4189aa90ca98789820e4a26` with its LLUtils submodule. A package
+`e0e53ea0920c61c23e8fbe92cd06ab1559541db7` with its LLUtils submodule. A package
 must provide both LWS targets. FetchContent source overrides are supported.
 
 For JSON, an existing `nlohmann_json::nlohmann_json` target takes precedence,
@@ -589,3 +589,32 @@ LWSSettings chooses Ctrl+S and Ctrl+Enter for its owned popups. LWSUI does not a
 those shortcuts. Actions can explicitly allow input outside a popup with
 Control::allowDuringPopup, while normal mouse-button, capture, and availability
 checks remain in effect.
+
+### Runtime custom content
+
+A template can place application-owned UI in its definition tree:
+
+```json
+{"type":"custom","id":"filesystem/associations","label":"File associations","control":"file-associations"}
+```
+
+Set `EditorConfig::customFactory` to return `CustomContent`: an owned LWSUI control
+and an optional operation callback. The callback receives `CustomOperation::Apply`
+or `Discard` and a completion function. Call completion exactly once on the UI
+thread, either immediately or asynchronously. Ordinary settings complete first;
+custom failures keep the window open without rolling back completed effects.
+While an operation is pending, the view blocks further operations and closure.
+Do not replace definitions or destroy the host from an operation callback.
+
+Custom nodes have no default or document value and never enter saved values.
+The application owns their runtime model and persistence, if any. Discard clears
+pending intentions; it must not undo previously applied external changes. Reset
+commands affect ordinary settings only. Custom content uses an indented stacked row, respects control width limits, and
+participates in metadata search under the All filter. Missing factories produce
+an unavailable placeholder. Standard LWSUI styling and completion rules apply.
+
+Use `SettingsEditor::View()->RevealSetting(id)` after showing the editor to navigate
+to an ordinary or custom setting. It clears search and value filters, expands the
+ancestors, selects the description, and scrolls to the row after layout. Unknown
+IDs or edits that prevent navigation return false. Existing staged values remain
+unchanged.

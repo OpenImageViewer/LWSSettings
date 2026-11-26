@@ -80,6 +80,13 @@ namespace LWSSettings
                         ReadDefinition(json["children"][i], location + "/children/" + std::to_string(i), depth + 1));
                 return {std::move(group)};
             }
+            if (type == "custom")
+            {
+                CustomDefinition custom;
+                static_cast<Metadata&>(custom) = std::move(metadata);
+                custom.control = Required(json, "control", location);
+                return {std::move(custom)};
+            }
             SettingDefinition setting;
             static_cast<Metadata&>(setting) = std::move(metadata);
             setting.visibleInEditor = json.value("visibleInEditor", true);

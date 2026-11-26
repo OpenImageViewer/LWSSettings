@@ -22,13 +22,30 @@ namespace LWSSettings
         bool saveValidFields = true;
         bool discardAll = true;
     };
+    enum class CustomOperation
+    {
+        Apply,
+        Discard
+    };
+    using CustomCompletion = std::function<void(Status)>;
+    struct CustomContent
+    {
+        std::unique_ptr<LWSUI::Control> control;
+        // UI-thread confined; complete exactly once, immediately or asynchronously.
+        // Apply follows successful document completion. Discard never undoes applied effects.
+        std::function<void(CustomOperation, CustomCompletion)> execute;
+    };
+    using CustomFactory = std::function<CustomContent(const CustomDefinition&)>;
     class SettingsView : public LWSUI::Container
     {
       public:
 
         explicit SettingsView(SettingsDocument& document, std::string title = "Settings", SettingsTheme theme = {},
-                              bool showRevert = false, bool collapseGroups = false);
+                              bool showRevert = false, bool collapseGroups = false, CustomFactory customFactory = {});
         ~SettingsView();
+        // Clears filters, expands ancestors and reveals a normal or custom setting after layout.
+        // Returns false for unknown IDs or when the current edit prevents navigation.
+        bool RevealSetting(std::string_view id);
         void SetFilter(std::string text);
         std::string GetFilter() const { return search_->Text(); }
         void SetValueFilter(SettingValueFilter filter);
@@ -48,6 +65,7 @@ namespace LWSSettings
         void SetSaveDialogOptions(ValidationDialogOptions options) { saveDialogOptions_ = options; }
         // Cancellation never depends on field navigation behavior.
         bool PrepareClose();
+        bool DiscardForClose(std::function<void()> closed);
         bool FinishForClose(FormValidationPolicy policy, ValidationDialogOptions options = {},
                             std::function<void()> closed = {});
         const std::string& ValidationMessage() const { return validation_; }
@@ -74,6 +92,7 @@ namespace LWSSettings
         struct Binding;
         void Rebuild();
         Binding* FindBinding(std::string_view id) const;
+        LWSUI::TreeView::Row* FindRow(std::string_view id) const;
         void Refresh(const Change& change);
         void StyleChanged(Binding&);
         void ReloadValues();
@@ -104,12 +123,24 @@ namespace LWSSettings
         static std::string FormatValidation(const ValidationResults& invalid);
         bool RequestOperation(FormOperation operation, FormValidationPolicy policy, ValidationDialogOptions options,
                               std::function<void()> closed = {});
-        bool CompleteOperation(FormOperation operation, FormAction action, const ValidationResults& invalid);
+        bool CompleteOperation(FormOperation operation, FormAction action, const ValidationResults& invalid,
+                               std::function<void()> done = {});
         void ShowValidationDecision(FormOperation operation, ValidationDialogOptions options,
                                     const ValidationResults& invalid, std::function<void()> closed);
         FormValidationPolicy saveValidationPolicy_ = FormValidationPolicy::ShowDecisionDialog;
         ValidationDialogOptions saveDialogOptions_;
-        bool decisionPending_ = false;
+        bool decisionPending_ = false, customPending_ = false;
+        struct CustomRow
+        {
+            LWSUI::TreeView::Row* row;
+            std::string id, search;
+            std::function<void(CustomOperation, CustomCompletion)> execute;
+        };
+        CustomFactory customFactory_;
+        std::vector<CustomRow> customRows_;
+        struct CustomRun;
+        bool CompleteCustom(CustomOperation, std::function<void()> done = {});
+        void NextCustom(const std::shared_ptr<CustomRun>& run, Status status = {});
         void UpdateStatus();
         void ClearStatus();
         SettingsDocument& document_;
@@ -140,7 +171,7 @@ namespace LWSSettings
         LWSUI::FlowPanel* actions_;
         LWSUI::StackPanel* operationOptions_;
         std::vector<LWSUI::Button*> primaryActions_;
-        std::string filter_, validation_, operationError_, information_, selectedSetting_;
+        std::string filter_, validation_, operationError_, information_, selectedSetting_, revealSetting_;
         std::map<std::string, std::optional<LWSUI::InvalidEditPolicy>, std::less<>> fieldValidation_;
         // Sorted by ID for lookup; visual order belongs to the control tree.
         // Sorting unique_ptrs preserves the addresses captured by editor callbacks.

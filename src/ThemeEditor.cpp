@@ -268,9 +268,9 @@ namespace LWSSettings
             {
                 for (auto& node : nodes)
                     if (auto* group = std::get_if<GroupDefinition>(&node.content)) self(self, group->children);
-                    else
+                    else if (auto* fieldSetting = std::get_if<SettingDefinition>(&node.content))
                     {
-                        auto& setting = std::get<SettingDefinition>(node.content);
+                        auto& setting = *fieldSetting;
                         if (const auto* field = ThemeFields::Find(setting.id))
                         {
                             auto value = field->read(defaults);

@@ -83,7 +83,7 @@ namespace LWSSettings
                 bar->SetWindowControls({.minimize = true, .draggable = true, .requestClose = [this] { Hide(); }});
                 host_->SetMainMenu(std::move(bar));
                 auto view = std::make_unique<SettingsView>(document_, config_.title, config_.theme, config_.showRevert,
-                                                           config_.collapseGroups);
+                                                           config_.collapseGroups, config_.customFactory);
                 auto* createdView = view.get();
                 view->SetIcon(icon);
                 view->SetSaveValidationPolicy(config_.saveValidationPolicy);
@@ -154,7 +154,8 @@ namespace LWSSettings
                 // Explicit revert remains cancellation rather than a save request.
                 if (view_ && !view_->PrepareClose()) return false;
                 if (!host_->Finish(LWSUI::EditPhase::Cancel)) return false;
-                document_.RevertSaved();
+                if (!view_) document_.RevertSaved();
+                else if (!view_->DiscardForClose([this] { HideWindow(); })) return false;
             }
             else if (view_ && !view_->FinishForClose(config_.closeValidationPolicy, config_.closeDialogOptions,
                                                     [this] { HideWindow(); })) return false;

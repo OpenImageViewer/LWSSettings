@@ -177,8 +177,9 @@ namespace LWSSettings
         return result;
     }
     SettingsView::SettingsView(SettingsDocument& document, std::string title, SettingsTheme theme, bool showRevert,
-                               bool collapseGroups)
-        : document_(document), theme_(std::move(theme)), collapseGroups_(collapseGroups)
+                               bool collapseGroups, CustomFactory customFactory)
+        : document_(document), theme_(std::move(theme)), collapseGroups_(collapseGroups),
+          customFactory_(std::move(customFactory))
     {
         SetStyle(theme_.base);
         headerState_ = std::make_shared<internal::SettingsHeaderState>();
@@ -263,11 +264,9 @@ namespace LWSSettings
             actions_->AddItem(std::move(button));
         };
         action("Reset all", Command::ResetAll);
-        if (document_.Config().applyPolicy == ApplyPolicy::OnApply)
-        {
-            action("Cancel", Command::Cancel);
-            action("Apply", Command::Apply, true);
-        }
+        const bool onApply = document_.Config().applyPolicy == ApplyPolicy::OnApply;
+        if (onApply) action("Cancel", Command::Cancel);
+        if (onApply || customFactory_) action("Apply", Command::Apply, true);
         if (showRevert) action("Revert", Command::Revert);
         action(document_.Config().savePolicy == SavePolicy::OnCommit ? "Save now" : "Save", Command::Save, true);
         layout_ = &Emplace<LWSUI::DockPanel>();
@@ -418,6 +417,11 @@ namespace LWSSettings
         footerPanel_->minimumHeight = l.footerHeight;
         actions_->gap = actions_->rowGap = l.actionGap;
         actions_->minimumItemWidth = l.actionWidth;
+        for (auto& custom : customRows_)
+        {
+            custom.row->SetStyle(theme_.tree);
+            custom.row->EditorControl().SetStyle(theme_.controls);
+        }
         split_->SetStyle(theme_.description);
         split_->SetDefaultTrailingSize(l.descriptionHeight, l.descriptionMaxFraction);
         split_->SetMinimumSizes(theme_.tree.treeRowHeight, theme_.description.headingFont.size * 1.4f +
@@ -463,7 +467,8 @@ namespace LWSSettings
     }
     void SettingsView::Execute(Command command)
     {
-        if (decisionPending_) return;
+        if (!PrepareClose())
+            return;
         if (command == Command::Save || command == Command::Apply)
         {
             RequestOperation(command == Command::Save ? FormOperation::Save : FormOperation::Apply,
@@ -495,6 +500,8 @@ namespace LWSSettings
         }
         information_ = result ? std::move(message) : std::string{};
         Report(result);
+        if (cancel && result)
+            CompleteCustom(CustomOperation::Discard);
     }
     void SettingsView::ReloadValues()
     {
@@ -580,15 +587,20 @@ namespace LWSSettings
         const auto* binding = FindBinding(selectedSetting_);
         const auto* setting = document_.Find(selectedSetting_);
         if (binding && setting) Describe(setting->label, binding->path, setting->description);
+        else if (auto* row = FindRow(selectedSetting_)) row->OnHover.Raise();
     }
     void SettingsView::Rebuild()
     {
+        if (customPending_)
+            return;
         if (Host())
             Host()->ClosePopup(LWSUI::EditPhase::Cancel);
         descriptionTitle_->SetText("Setting details");
         description_->SetText("");
         location_->SetText("");
         location_->SetVisible(false);
+        revealSetting_.clear();
+        customRows_.clear();
         bindings_.clear();
         groups_.clear();
         hovers_.clear();
@@ -612,6 +624,27 @@ namespace LWSSettings
                     hovers_.push_back(branch.OnHover.Connect([this, title = group->label, path, text = group->description]
                                                              { Describe(title, path, text); }));
                     self(self, branch.Content(), group->children, breadcrumb, ancestorSearch + " " + groups_.back().search);
+                    continue;
+                }
+                if (const auto* custom = std::get_if<CustomDefinition>(&definition.content))
+                {
+                    auto content = customFactory_ ? customFactory_(*custom) : CustomContent{};
+                    if (!content.control)
+                    {
+                        content.control = std::make_unique<LWSUI::Label>("Unavailable control: " + custom->control);
+                        content.control->SetEnabled(false);
+                    }
+                    content.control->SetStyle(theme_.controls);
+                    auto& row = parent.Emplace<LWSUI::TreeView::Row>(std::make_unique<LWSUI::Label>(custom->label),
+                                                                     std::move(content.control));
+                    row.stacked = true;
+                    row.SetStyle(theme_.tree);
+                    customRows_.push_back(
+                        {&row, custom->id, Lower(ancestorSearch + " " + breadcrumb + " " + custom->description + " " + custom->id),
+                         std::move(content.execute)});
+                    hovers_.push_back(
+                        row.OnHover.Connect([this, title = custom->label, path, text = custom->description]
+                                            { Describe(title, path, text); }));
                     continue;
                 }
                 const auto& setting = std::get<SettingDefinition>(definition.content);
@@ -691,7 +724,7 @@ namespace LWSSettings
         empty_ = &tree->Emplace<LWSUI::Label>("No matching settings");
         empty_->SetHighlightPattern("");
         treeScroll_->SetContent(std::move(tree));
-        if (!FindBinding(selectedSetting_)) selectedSetting_.clear();
+        if (!FindRow(selectedSetting_)) selectedSetting_.clear();
         else RestoreSelectedDescription();
         ClearStatus();
         UpdateFilter();
@@ -774,8 +807,33 @@ namespace LWSSettings
             view.UpdateGroupActions();
             view.Invalidate(true);
         };
-        if (Host()) Host()->Post(Handle(), std::move(apply));
-        else apply(*this);
+        if (Host())
+            Host()->Post(Handle(), std::move(apply));
+        else
+            apply(*this);
+    }
+    LWSUI::TreeView::Row* SettingsView::FindRow(std::string_view id) const
+    {
+        if (const auto* binding = FindBinding(id))
+            return binding->row;
+        const auto custom = std::ranges::find(customRows_, id, &CustomRow::id);
+        return custom == customRows_.end() ? nullptr : custom->row;
+    }
+    bool SettingsView::RevealSetting(std::string_view id)
+    {
+        auto* row = FindRow(id);
+        if (!row || !PrepareNavigation())
+            return false;
+        SetFilter("");
+        SetValueFilter(SettingValueFilter::All);
+        UpdateFilter();
+        for (auto* parent = row->Parent(); parent; parent = parent->Parent())
+            if (auto* branch = dynamic_cast<LWSUI::TreeView::Branch*>(parent))
+                branch->SetExpanded(true);
+        selectedSetting_ = revealSetting_ = id;
+        RestoreSelectedDescription();
+        Invalidate(true);
+        return true;
     }
     void SettingsView::ClearSearch()
     {
@@ -892,6 +950,13 @@ namespace LWSSettings
             binding->row->SetVisible(visible, false);
             any |= visible;
         }
+        for (const auto& custom : customRows_)
+        {
+            const bool visible = valueFilter_ == SettingValueFilter::All &&
+                                 (filter_.empty() || custom.search.find(filter_) != std::string::npos);
+            custom.row->SetVisible(visible, false);
+            any |= visible;
+        }
         const bool filtering = !filter_.empty() || valueFilter_ != SettingValueFilter::All;
         for (auto it = groups_.rbegin(); it != groups_.rend(); ++it)
         {
@@ -924,6 +989,8 @@ namespace LWSSettings
                 invalid.push_back({std::move(id), std::move(label), editor.Handle(), std::move(issues)});
         };
         for (const auto& binding : bindings_) collect(binding->id, binding->label->Text(), *binding->editor);
+        for (const auto& custom : customRows_)
+            collect({}, static_cast<LWSUI::Label&>(custom.row->NameControl()).Text(), custom.row->EditorControl());
         if (Host() && Host()->MainMenu()) collect({}, "Header", *Host()->MainMenu());
         return invalid;
     }
@@ -944,9 +1011,10 @@ namespace LWSSettings
     }
     bool SettingsView::PrepareClose()
     {
-        return !decisionPending_;
+        return !decisionPending_ && !customPending_;
     }
-    bool SettingsView::CompleteOperation(FormOperation operation, FormAction action, const ValidationResults& invalid)
+    bool SettingsView::CompleteOperation(FormOperation operation, FormAction action, const ValidationResults& invalid,
+                                         std::function<void()> done)
     {
         std::vector<std::string> discarded;
         for (const auto& field : invalid) if (!field.id.empty()) discarded.push_back(field.id);
@@ -956,17 +1024,19 @@ namespace LWSSettings
         {
             // The model can finalize and roll back without replacing visible drafts or popup sessions.
             LWSUI::ScopedFlag preserve(preservingDrafts_, true);
-            result = document_.CompleteEdits(completion, discarded, [&]() -> Status
-            {
-                // Extension controls have their own completion contract. Their callbacks
-                // must succeed before the document chooses its persistence snapshot.
-                const auto phase = completion == SettingsDocument::Completion::Discard
-                    ? LWSUI::EditPhase::Cancel : LWSUI::EditPhase::Commit;
-                if ((Host() && Host()->MainMenu() && !Host()->MainMenu()->Finish(phase)) ||
-                    !operationOptions_->Finish(phase) || !search_->Finish(phase))
-                    return std::unexpected(Error{"edit", "Correct the auxiliary input before continuing"});
-                return {};
-            });
+            result = document_.CompleteEdits(
+                completion, discarded,
+                [&]() -> Status
+                {
+                    // Header and operation-option inputs finish before choosing the document snapshot.
+                    // Runtime custom operations run separately after ordinary settings complete.
+                    const auto phase = completion == SettingsDocument::Completion::Discard ? LWSUI::EditPhase::Cancel
+                                                                                           : LWSUI::EditPhase::Commit;
+                    if ((Host() && Host()->MainMenu() && !Host()->MainMenu()->Finish(phase)) ||
+                        !operationOptions_->Finish(phase) || !search_->Finish(phase))
+                        return std::unexpected(Error{"edit", "Correct the auxiliary input before continuing"});
+                    return {};
+                });
         }
         Report(result);
         if (!result)
@@ -987,19 +1057,21 @@ namespace LWSSettings
         information_ = completion == SettingsDocument::Completion::Discard ? "Restored saved values"
             : completion == SettingsDocument::Completion::Apply ? "Applied" : "Saved";
         UpdateStatus();
-        return true;
+        return CompleteCustom(action == FormAction::DiscardAll ? CustomOperation::Discard : CustomOperation::Apply,
+                              std::move(done));
     }
     bool SettingsView::RequestOperation(FormOperation operation, FormValidationPolicy policy,
                                         ValidationDialogOptions options, std::function<void()> closed)
     {
-        if (decisionPending_) return false;
+        if (!PrepareClose())
+            return false;
         const auto invalid = CollectInvalidFields();
         if (!invalid.empty() && policy == FormValidationPolicy::ShowDecisionDialog)
         {
             ShowValidationDecision(operation, options, invalid, std::move(closed));
             return false;
         }
-        return CompleteOperation(operation, FormAction::SaveValidFields, invalid);
+        return CompleteOperation(operation, FormAction::SaveValidFields, invalid, std::move(closed));
     }
     void SettingsView::ShowValidationDecision(FormOperation operation, ValidationDialogOptions options,
                                                const ValidationResults& invalid, std::function<void()> closed)
@@ -1013,7 +1085,9 @@ namespace LWSSettings
         {
             decisionPending_ = false;
             // Dialogs are asynchronous. Resolve fresh fields rather than retaining editor pointers.
-            if (CompleteOperation(operation, action, CollectInvalidFields()) && operation == FormOperation::Close && closed)
+            if (CompleteOperation(operation, action, CollectInvalidFields(),
+                                  operation == FormOperation::Close ? closed : std::function<void()>{}) &&
+                operation == FormOperation::Close && closed)
                 closed();
         };
         std::vector<LWSUI::UIHost::DecisionAction> actions;
@@ -1029,15 +1103,92 @@ namespace LWSSettings
     bool SettingsView::FinishForClose(FormValidationPolicy policy, ValidationDialogOptions options,
                                       std::function<void()> closed)
     {
-        if (decisionPending_)
+        if (!PrepareClose())
         {
             if (Host()) Host()->ClosePopup(LWSUI::EditPhase::Cancel);
             return false;
         }
         return RequestOperation(FormOperation::Close, policy, options, std::move(closed));
     }
+    bool SettingsView::DiscardForClose(std::function<void()> closed)
+    {
+        if (!PrepareClose())
+            return false;
+        document_.RevertSaved();
+        return CompleteCustom(CustomOperation::Discard, std::move(closed));
+    }
+    struct SettingsView::CustomRun
+    {
+        CustomOperation operation;
+        std::function<void()> done;
+        size_t next = 0;
+        bool invoking = true, finished = false, waiting = false;
+    };
+    bool SettingsView::CompleteCustom(CustomOperation operation, std::function<void()> done)
+    {
+        if (std::ranges::none_of(customRows_, [](const auto& row) { return bool(row.execute); }))
+            return true;
+        auto run = std::make_shared<CustomRun>(operation, std::move(done));
+        customPending_ = true;
+        surface_->SetEnabled(false);
+        information_ = operation == CustomOperation::Apply ? "Applying custom changes..."
+                                                           : "Discarding pending changes...";
+        UpdateStatus();
+        NextCustom(run);
+        run->invoking = false;
+        return run->finished;
+    }
+    void SettingsView::NextCustom(const std::shared_ptr<CustomRun>& run, Status status)
+    {
+        while (status && run->next < customRows_.size() && !customRows_[run->next].execute)
+            ++run->next;
+        if (!status || run->next == customRows_.size())
+        {
+            run->finished = bool(status);
+            customPending_ = false;
+            surface_->SetEnabled(true);
+            information_ = !status ? "Ordinary settings completed; custom changes remain pending."
+                           : run->operation == CustomOperation::Apply ? "Applied"
+                                                                      : "Pending custom changes discarded";
+            Report(status);
+            if (status && !run->invoking && run->done)
+                run->done();
+            return;
+        }
+        const auto index = run->next++;
+        run->waiting = true;
+        // The handle also rejects completions after detachment. A step number rejects duplicate callbacks.
+        auto complete = [handle = Handle(), run, index](Status status)
+        {
+            auto* view = static_cast<SettingsView*>(handle.Get());
+            if (!view || !run->waiting || run->next != index + 1)
+                return;
+            run->waiting = false;
+            auto next = [run, status = std::move(status)](LWSUI::Control& control) mutable
+            { static_cast<SettingsView&>(control).NextCustom(run, std::move(status)); };
+            if (view->Host() && !run->invoking)
+                view->Host()->Post(handle, std::move(next));
+            else
+                next(*view);
+        };
+        try
+        {
+            const auto phase = run->operation == CustomOperation::Apply ? LWSUI::EditPhase::Commit
+                                                                        : LWSUI::EditPhase::Cancel;
+            if (!customRows_[index].row->Finish(phase))
+                complete(std::unexpected(Error{"custom", "Correct the custom input before continuing"}));
+            else
+                customRows_[index].execute(run->operation, complete);
+        }
+        catch (const std::exception& error)
+        {
+            complete(std::unexpected(Error{"custom", error.what()}));
+        }
+    }
     bool SettingsView::Finish(LWSUI::EditPhase phase)
     {
+        if (customPending_)
+            return false;
         if (phase == LWSUI::EditPhase::Commit)
         {
             const auto errors = CollectInvalidFields();
@@ -1106,5 +1257,12 @@ namespace LWSSettings
     void SettingsView::OnArrange()
     {
         surface_->Arrange(Bounds());
+        if (!revealSetting_.empty())
+        {
+            // Bounds are valid only after expanded branches and cleared filters have been arranged.
+            const auto id = std::exchange(revealSetting_, {});
+            if (const auto* row = FindRow(id))
+                treeScroll_->SetOffset(treeScroll_->Offset() + row->Bounds().y - treeScroll_->Bounds().y);
+        }
     }
 }  // namespace LWSSettings
